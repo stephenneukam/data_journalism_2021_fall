@@ -34,7 +34,7 @@ There is no code to run from Chapter 1.
 
 ### Task 1: The console
 **Task** In the console (look below), type 2+2 and hit enter. What does it return? Type your answer below.
-**Answer:**
+**Answer:**4
 
 ### Task 2: Variables
 **Task** Put the following code -- which stores the numeral 2 as a variable called number -- in the console and hit enter.    
@@ -51,7 +51,7 @@ number * number
 
 What does it return? Type your answer below:
 
-**Answer:**
+**Answer:**4
 
 ### Task 3: Install packages
 **Task** In the console, run the following code to install the Tidyverse:
@@ -93,7 +93,7 @@ ppp_maryland_loans <- read_rds("pre_lab_01.rds")
 
 Once it loads, look at the environment window at right in RStudio for ppp_maryland_loans. It's next to a small blue circle with a white arrow in it.  To the right of that, look at how many "obs" the dataset has ("obs" is short for observation, which is another way of saying rows or records). Look at how many variables it has (another way of saying columns or fields).  Write the number of observations and variables below.
 
-**Answer**
+**Answer** 195856 obs. of 63 variables
 
 ### Task 3: Glimpse data
 **Task** Run the following codeblock to use glimpse() to get a sense of the data, some of the values in each field/variable/column, and the data types of each field/variable/column.
