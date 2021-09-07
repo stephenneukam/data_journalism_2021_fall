@@ -76,7 +76,7 @@ maryland_ppp %>%
 )  %>% arrange(desc(percent_payroll))
 ```
 What is the payroll proceeds percentage for the first result? Put your answer in the space below.
-**Answer**
+**Answer** 100%
 
 
 ### Task 7: Mutate with ordering, part 2
@@ -91,7 +91,7 @@ maryland_ppp %>%
 )  %>% arrange(percent_payroll, desc(amount))
 ```
 What is the payroll proceeds percentage for the first result? Put your answer in the space below.
-**Answer**
+**Answer** 0%
 
 
 ### Task 8: Create a new column using if/else
@@ -128,7 +128,7 @@ large_prince_georges_nonprofit <- maryland_ppp %>% filter(project_county_name ==
 nrow(large_prince_georges_nonprofit)
 ```
 What is the number of applications that meet that criteria? Put your answer in the space below.
-**Answer**
+**Answer** 145 applicants
 
 
 ### Task 11: Multiple filters - AND
@@ -140,7 +140,7 @@ and_prince_georges <- maryland_ppp %>% filter(project_county_name == "PRINCE GEO
 nrow(and_prince_georges)
 ```
 What is the number of applications that meet that criteria? Put your answer in the space below.
-**Answer**
+**Answer** 145 applicants
 
 ### Task 12: Multiple filters - OR
 **Task** Run the following code to limit our data to Prince George's County loan applications OR applications from nonprofit organizations OR where the amount is larger than $150,000.
@@ -151,7 +151,7 @@ or_prince_georges <- maryland_ppp %>% filter(project_county_name == "PRINCE GEOR
 nrow(or_prince_georges)
 ```
 What is the number of applications that meet that criteria? Put your answer in the space below.
-**Answer**
+**Answer** 54,321 applicants
 
 
 ## Dates
@@ -166,7 +166,7 @@ maryland_ppp <- read.csv('ppp_applications_md.csv')
 glimpse(maryland_ppp)
 ```
 What is the datatype for `date_approved` (it's just to the right of the column name)? Put your answer in the space below.
-**Answer**
+**Answer** Character datatype
 
 ### Task 14: Load data using lubridate
 **Task** Run the following code to load the application data, then use glimpse() to see the data type for `date_approved`.
@@ -178,7 +178,7 @@ lubridate_maryland_ppp <- maryland_ppp %>% mutate(
 glimpse(lubridate_maryland_ppp)
 ```
 What is the datatype for `date_approved` (it's just to the right of the column name)? Put your answer in the space below.
-**Answer**
+**Answer** Character datatype
 
 
 ### Task 14: Load data using read_csv
@@ -189,7 +189,7 @@ maryland_ppp <- read_csv("ppp_applications_md.csv")
 glimpse(maryland_ppp)
 ```
 What is the datatype for `date_approved` (it's just to the right of the column name)? Put your answer in the space below.
-**Answer**
+**Answer** Character datatype
 
 ### Task 14: Use mutate and lubridate to add a column called `Month` and see which month had the most applications.
 **Task** Run the following code to create a new column based on `date_approved`
@@ -202,4 +202,4 @@ maryland_ppp %>%
   arrange(desc(total))
 ```
 What month saw the most applications and how many? Put your answer in the space below.
-**Answer**
+**Answer** April 2020
