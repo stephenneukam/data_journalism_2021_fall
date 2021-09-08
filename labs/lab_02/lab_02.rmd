@@ -50,25 +50,36 @@ west_virginia_ppp <- read_rds("lab_02.rds")
 **A1** [write your answer here]
 
 ```{r}
-# Write the code to produce your answer here
+west_virginia_ppp %>%
+  mutate(amount = 
+  )
 
 ```
 
 **Q2** Which servicing lenders have the most loans with undisbursed amounts greater than 0?
-**A2** [write your answer here]
+**A2** Harvest Small Business Finance, LLC, Capital Plus Financial, LLC, Benworth Capital, Customers Bank
 
 ```{r}
-# Write the code to produce your answer here
+west_virginia_ppp %>% 
+  filter (undisbursed_amount > 0) %>%
+  group_by(servicing_lender_name) %>%
+  summarise(
+    count_undisbursed_loan_amount = n()
+  ) %>%
+  arrange(desc(count_undisbursed_loan_amount))
+  
 
 ```
 
 **Q3** How would you describe the top 10 list of those lenders? What do they have in common or not? (You may want to look up some of the top ones.)
-**A3** [write your answer here]
+**A3** Many of these lenders specialize in mortgage lending.  
 
 **Q4** Which month in 2021 had the most loans approved?
 **A4** [write your answer here]
 
 ```{r}
-# Write the code to produce your answer here
+west_virginia_ppp %>%
+  filter(date_approved) 
+
 
 ```
