@@ -75,11 +75,12 @@ west_virginia_ppp %>%
 **A3** Many of these lenders specialize in mortgage lending.  
 
 **Q4** Which month in 2021 had the most loans approved?
-**A4** [write your answer here]
+**A4** March
 
 ```{r}
 west_virginia_ppp %>%
-  filter(date_approved) 
-
-
+  mutate(month = floor_date(date_approved, "month")) %>%
+  group_by(month) %>%
+  summarise(total = n()) %>%
+  arrange(desc(total))
 ```
