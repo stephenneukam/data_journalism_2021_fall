@@ -29,7 +29,7 @@ library(lubridate)
 Let's say that we have county population estimates for three different years - 2010, 2015 and 2020 - in three different files. They have the same record layout and the same number of counties.
 
 **Task** Load the three CSV population estimate files. Do they have the same column structure?
-**Answer**
+**Answer** They do have the same column structure.
 
 ```{r}
 popestimate_2010 <- read_csv("data/popestimate_2010.csv")
@@ -57,7 +57,7 @@ View(estimates)
 
 ### Task 4: Loading data
 **Task** Load the Maryland PPP data and a CSV file with NAICS codes. How many rows are in maryland_ppp?
-**Answer**
+**Answer** There are 195869 rows.
 
 ```{r}
 maryland_ppp <- read_rds("pre_lab_04.rds")
@@ -69,7 +69,7 @@ naics_codes <- read_csv('data/naics_codes.csv')
 
 ### Task 5: Join Them
 **Task** Run the following code to join the PPP data to the NAICS codes using the common column naics_code as the key. How many rows are there now?
-**Answer**
+**Answer** The same amount of rows.
 
 ```{r}
 # with nrow included to match row total
@@ -99,7 +99,7 @@ maryland_zcta <- read_csv('data/maryland_zcta.csv')
 
 ### Task 9: Join ZCTA to PPP Data
 **Task** Join the ZCTA data to the our PPP & NAICS data. What's the error message you get? What do you think it means?
-**Answer**
+**Answer** It means that one of the columns is a character type and the other is a numeric data type. One of these has to be mutated to fit the other.
 
 ```{r}
 # join on zip - but there's a problem
@@ -114,7 +114,7 @@ maryland_zcta <- maryland_zcta %>% mutate(across(ZCTA5N, as.character))
 
 ### Task 11: Join ZCTA to PPP Data and Check
 **Task** Join the ZCTA data to the our PPP & NAICS data. Examine the columns in the new dataframe - does every row have demographic data? HINT: Use the >> character to browse columns
-**Answer**
+**Answer** No, not every row has demographic data.
 
 ```{r}
 maryland_ppp_with_naics_and_demographics <- maryland_ppp_with_naics %>% left_join(maryland_zcta, by=c("zip"="ZCTA5N"))
@@ -123,7 +123,7 @@ View(maryland_ppp_with_naics_and_demographics)
 
 ### Task 12: Make a Zip5 Column, Join ZCTA to PPP Data and Check Again
 **Task** Make a zip5 column and join again. Examine the new dataframe - now does every row have demographic data?
-**Answer**
+**Answer** Yes.
 
 ```{r}
 # make a zip5 column and redo the join
@@ -133,7 +133,7 @@ maryland_ppp_with_naics_and_demographics <- maryland_ppp_with_naics %>% left_joi
 
 ### Task 13: Asking Demographic Questions
 **Task** Find the number of PPP loans that went to ZCTAs with more than 50% non-Hispanic Black population, and calculate the average and median amounts for those loans. Put your answers below.
-**Answer**
+**Answer** Total: 44032. Average: 53836.46. Median: 20000.
 
 ```{r}
 # zcta with > 50% non-Hispanic Black population
@@ -148,7 +148,7 @@ maryland_ppp_with_naics_and_demographics %>%
 
 ### Task 14: Asking Demographic Questions
 **Task** Find the number of PPP loans that went to ZCTAs with more than 50% non-Hispanic white population, and calculate the average and median amounts for those loans. Put your answers below.
-**Answer**
+**Answer** Total: 113937. Average: 88140.24. Median: 20833.
 
 ```{r}
 # zcta with > 50% non-Hispanic white population
@@ -162,7 +162,8 @@ maryland_ppp_with_naics_and_demographics %>%
 
 ### Task 15: Asking Demographic Questions
 **Task** Find the number of PPP loans that went to ZCTAs with more than 50% non-Hispanic Black population, grouped by rural or urban status, and calculate the average and median amounts for those loans. Put your answers below.
-**Answer**
+**Answer** Rural(Total: 148 Average: 44328.87 Median: 19621)
+Urban(Total: 43884 Average: 53868.53 Median: 20000)
 
 ```{r}
 # zcta with > 50% non-Hispanic Black population grouped by rural/urban
@@ -177,7 +178,8 @@ maryland_ppp_with_naics_and_demographics %>%
 
 ### Task 16: Asking Demographic Questions
 **Task** Find the number of PPP loans that went to ZCTAs with more than 50% non-Hispanic white population, grouped by rural or urban status, and calculate the average and median amounts for those loans. Put your answers below.
-**Answer**
+**Answer** Rural (Total: 18337 Average: 73694.14 Median: 20833)
+Urbam (Total: 95600 Average: 90911.14 Median: 20833)
 
 ```{r}
 # zcta with > 50% non-Hispanic white population grouped by rural/urban
