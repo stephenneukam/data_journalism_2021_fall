@@ -28,7 +28,8 @@ You'll need to load two packages for this: the tidyverse and janitor.
 ```{r}
 # Turn off scientific notation
 options(scipen=999)
-
+library(tidyverse)
+library(janitor)
 ```
 
 ## Load Data
@@ -40,6 +41,13 @@ You'll need to load three data sets for this:
 * A table of West Virginia population by county (American Community Survey, 2019 5-year averages) (wv_population_county.csv).
 
 All three data sets are in the data folder.  Write code to load the three in the codeblock below.
+
+```{r}
+wv_ppp_loans <- read_rds("data/lab_05.rds")
+naics_codes <- read_csv("data/naics_codes.csv")
+wv_population_county <- read_csv("data/wv_population_county.csv")
+```
+
 
 **Task** Create a codeblock below this task, then read the data sets in in and assign them to appropriate variable names. There's a fourth data set you'll use in this lab, too, of selected loans in ZIP Code 25401. But there's no need to load it now.
 
@@ -62,9 +70,26 @@ Then answer these questions:
 * How many loans are there at that street address?
 * What are the names of the businesses at that address?
 
-**A1.**
+**A1.** 126 E Burke St has the most loans. There are six loans at the address. These are the names of the businesses:
+- DREW HOLDINGS LLC
+- BRIX27, LLC
+- ABRAHAM ASHTON
+- HUB CO-OP LLC
+- HUB CO-OP, LLC
+- RONIN PROPERTIES LLC
 
 ```{r}
+cleaned_25401_loans <- read_csv("data/zip_25401_loan_sample-cleaned.csv")
+
+cleaned_25401_loans %>%
+  group_by(address) %>%
+  summarise(
+    count=n()
+  ) %>%
+  arrange(desc(count))
+
+cleaned_25401_loans %>%
+  filter(address == "126 E Burke St")
 
 ```
 
@@ -74,7 +99,7 @@ Google the street address.  Google the business names and search for their corpo
 
 Based on your research, does it seem suspicious that this collection of businesses all got loans using the same address? Why or why not. Use specific facts identified in your research to support your position. 
 
-**A2.**
+**A2.** I do find it suspicious that this collection of businesses all received loans using the same address. The cluster of businesses includes a wide range of sectors: three real estate businesses, food retail and a sole proprietorship. Also, there is more than one name listed as owners or directors throughout the businesses. The physical address looks to only include branding for The Hub, which claims to be a "community workspace." It is unclear exactly what that means. The inside of the building looks quite modern and decorated while the outside does not. However, the door and window from the inside of the building seems to correspond with the door and windows from the outside. 
 
 **Q3.** Start by using the West Virginia slice of the PPP loan data that you loaded at the start of the lab to create a subset of PPP loans in West Virginia's second largest county (which you can find in wv_population_county). And then use that table you created to answer the following questions:
 
@@ -85,15 +110,41 @@ Requirement: you MUST export a dataframe of PPP loans from R Studio at some poin
 
 Guidance: there are a lot of steps you'll need to take to answer this question. You may or may not find it helpful to write out in English what you plan to do step-by-step before you start writing code.   
 
-**A3.**
+**A3.** Second-largest county is Berkeley. Martinsburg had the most loans with 1166. Full-service restaurants had the most number of loans. 
 
 ```{r}
+wv_population_county %>%
+  group_by(county) %>%
+  summarise(total_amount = sum(population_2019)) %>%
+  arrange(desc(total_amount))
 
+berkeley_loans <- wv_ppp_loans %>%
+  filter(project_county_name == "BERKELEY")
+
+write_csv(berkeley_loans, "berkeley_loans")
+
+berkeley_loans_cleaned <- read.csv("data/berkeley_loans_cleaned.csv")
+
+berkeley_loans_cleaned %>%
+  group_by(city) %>%
+  summarise(
+    count=n()
+  ) %>%
+  arrange(desc(count))
+
+berkeley_loans_cleaned %>%
+  filter(city == "Martinsburg") %>%
+  group_by(naics_code) %>%
+  summarise(
+    count=n()
+  ) %>%
+  arrange(desc(count))
+  
 ```
 
 **Q4.** What are your two best hypotheses, which you'd need to confirm with reporting and further analysis, that explain why that industry is at the top of the list?
 
-**A4.** 
+**A4.** I know from experience that Berkeley is a popular tourist and vacation spot. Martinsburg probably capitalizes on that influx of travelers with restaurants, making it one of the pillars of the local economy. A brief Google search confirms that Martinsburg has a popular downtown district.
 
 **Q5.** Start with a table of loans to all businesses in the city and industry that answered question 3. Answer the following questions:
 * What is the name of the business that got the highest approved loan amount? 
@@ -104,6 +155,21 @@ Guidance: there are a lot of steps you'll need to take to answer this question. 
 * How many locations does this business have? 
 * Did one of its locations close during the pandemic, either before or after it got the loan?
 
-Hint: you will not find the answers to the last three questions in the data.  You could call them directly to get that information, but I don't want you to do that for this assignment.  Instead, do some web research. I would start by Googling the company name from the data and looking at the page that comes up for the business from at http://apps.sos.wv.gov/. I would use information I found on that page and use info about the company from Google, the [Wayback machine](https://archive.org/web/) (which lets you look at older versions of a company's website), Yelp, and Facebook. 
+Hint: you will not find the answers to the last three questions in the data.  You could call them directly to get that information, but I don't want you to do that for this assignment.  Instead, do some web research. I would start by Googling the company name from the data and looking at the page that comes up for the business from at http://apps.sos.wv.gov/. I would use information I found on that page and use info about the company from Google, the [Wayback machine](https://archive.org/web/) (which lets you look at older versions of a company's website), Yelp, and Facebook.
 
-**A5.**
+```{r}
+martinsburg_rest_loans <- berkeley_loans_cleaned %>%
+  filter(city == "Martinsburg", naics_code == "722511")
+
+martinsburg_rest_loans %>%
+  group_by(name) %>%
+  summarise(total_amount = sum(amount)) %>%
+  arrange(desc(total_amount))
+
+martinsburg_rest_loans %>%
+  filter(name == "COTTLE CHRISTI L LLC")
+  
+```
+
+
+**A5.** The name of the business is Cottle Christi L LLC. The loan was for 	280434.00. It was approved on Feb. 2 2021. It says that 94 jobs were retained. It is known to its customers as Kitzie's Restaurant and Lounge. This company has two locations in Martinsburg and Spring Mills. However, the LLCs page on the WV SOS claims it has four active trademarks but does not state where they are. There was also Kitzie's Cafe II and Kitzie's of Inwood, but both were terminated before the LLC recieved the loan.
