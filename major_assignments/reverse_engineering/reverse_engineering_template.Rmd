@@ -18,14 +18,17 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction 
 
-In this notebook, we are reverse engineering the story, [STORY NAME](STORY URL)
+In this notebook, we are reverse engineering the story, "As police struggle to solve homicides, Baltimore residents see an ‘open season for killing’" (https://www.washingtonpost.com/investigations/as-police-struggle-to-solve-homicides-baltimore-residents-see-an-open-season-for-killing/2018/12/26/7ee561e4-fb24-11e8-8c9a-860ce2a8148f_story.html)
 
 ## Load libraries
 
 Loading required libraries for this analysis.
 
 ```{r echo=FALSE, message=FALSE}
-
+options(scipen=999)
+library(tidyverse)
+library(lubridate)
+library(refinr)
 ```
 
 ## Load and Cleaning Data
@@ -39,6 +42,9 @@ In this section, describe the source of the data, write a basic data dictionary 
 
 # Clean required data and prepare for analysis if needed. 
 
+homicide_data <- read_csv("data/homicide-data.csv")
+
+# This data was collected by Washington Post journalists totaling homicide info form 50 American cities. It was collected in different formats and different jurisdictions and was cross-referenced with FBI data to ensure accuracy. The data has already been standardized and cleaned by Washington Post reporters so the datasets were easy to manuveur. I double-checked the accuracy and consistency of spelling in OpenRefine.
 
 ```
 
@@ -47,12 +53,46 @@ In this notebook, we are reverse engineering five sentences from the story.
 
 ### Sentence 1
 
-* **Sentence text**: [Paste in sentence to engineer here]
-* **Analysis summary**: [Write up two to three sentences describing the results of your analysis.  Were you able to confirm the finding? If not, why not?]
+* **Sentence text**: “As Baltimore has seen a stunning surge of violence, with nearly a killing each day for the past three years in a city of 600,000, homicide arrests have plummeted. City police made an arrest in 41 percent of homicides in 2014; last year, the rate was just 27 percent, a 14 percentage point drop.”
+* **Analysis summary**: I was able to confirm the findings of this paragraph and data analysis by The Post. By separating the data from Baltimore into different years, it was then possible to summarise how many cases had been closed by arrest and divide that by the total number of homicides to find the arrest percentage.
 
 ```{r}
 # Put code to reverse engineer sentence here
-
+baltimore_homicides <- homicide_data %>%
+  filter(city == "Baltimore")
+# Here we use filter and str_detect to create 11 different datasets for each year of homicide data that we are provided.
+o_seven_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2007"))
+o_eight_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2008"))
+o_nine_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2009"))
+ten_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2010"))
+eleven_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2011"))
+twelve_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2012"))
+thirteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2013"))
+fourteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2014"))
+fifteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2015"))
+sixteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2016"))
+seventeen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2017"))
+# Here we use group_by to isolate the disposition field and summarise the amount of cases that were "closed by arrest." We find that there were 86 cases where there were arrests in 2014 out of 211 total cases. That is an arrest percentage of 41 percent. 
+fourteen_homicides %>%
+  group_by(disposition) %>%
+  summarise(arrested_amount = sum(disposition == "Closed by arrest")) %>%
+  arrange(desc(arrested_amount))
+# Here we run the same code for the 2017 set of data and find that 93 arrests were made from a total of 340 cases — a total of 27 percent.
+seventeen_homicides %>%
+  group_by(disposition) %>%
+  summarise(arrested_amount = sum(disposition == "Closed by arrest")) %>%
+  arrange(desc(arrested_amount))
 # Display results of code below this codeblock
 
 ```
