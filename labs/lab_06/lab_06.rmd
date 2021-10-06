@@ -54,6 +54,7 @@ Let's load it into R, and in doing so we'll skip the first two rows and add our 
 
 ```{r}
 # Write the code to load the CSV file here
+international_migration <- read_csv("data/tabula-md-statistical-handbook.csv", skip=2, col_names = c("state_jurisdiction", "Int. Mig. 2011", "Int. Mig. 2012", "Int. Mig. 2013", "Int. Mig. 2014", "Int. Mig. 2015", "Int. Mig. 2016", "Int. Mig. 2017", "Int. Mig. 2018", "Int. Mig. 2019", "Int. Mig. 2011 to 2019"))
 ```
 
 Add a column for the type of migration ("international") and populate it:
@@ -62,31 +63,45 @@ Add a column for the type of migration ("international") and populate it:
 
 ```{r}
 # Write the code to add the column here
+
+international_migration <- international_migration %>%
+  mutate(
+    migration_type = "international"
+  )
+  
 ```
 
 ## Answer questions
 
 **Q1** Which region and county/city below the state level accounted for the largest percentage of international migration overall?  You'll need to add and populate columns representing percent of total using `mutate`.
-**A1** [write your answer here]
+**A1** The region with the largest percent of international migration overall was the Suburban Washington Region with 63%. The county with the largest percent of migration overall was Montgomery County with 37%.
 
 ```{r}
 # Write the code to produce your answer here
+percent_total <- international_migration %>%
+  mutate(
+    percent_total = `Int. Mig. 2011 to 2019`/198996
+  )
 
 ```
 
 **Q2** Write a sentence or two that describes the data you produced in A1. Try to convey the most important idea.
-**A2** [write your answer here]
+**A2** The data that I produced shows that the largest percentage of international migration ended up overwhelmingly in the Suburban Washington Region and a strong plurality of that population ended up in Montgomery County.
 
 **Q3** Which region & jurisdiction had the biggest percentage change for international migration between July 2018 and July 2017? The formula for percentage change is easy to remember: (New-Old)/Old.
-**A3** [write your answer here]
+**A3** The county with the largest decline in migration population was Calvert County with a 77% decline and the region with the largest percent decline was the Southern Maryland region with a 58% decline.
 
 ```{r}
 # Write the code to produce your answer here
-
+july_change <- international_migration %>%
+  mutate(
+    july_17_18_change = `Int. Mig. 2017`-`Int. Mig. 2018`,
+    july_17_18_percent = july_17_18_change/`Int. Mig. 2017`
+  )
 ```
 
 **Q4** What's your best guess as to why these declines occurred, and in those area in particular?
-**A4** [write your answer here]
+**A4** My best guess is that these areas rely on farms and the bay for much of its economy and many times the workers that fill those jobs are immigrants. In 2017 and 2018, the Trump administration had put in place policies that made it more difficult for those people to migrate and thus decreased the numbers.
 
 
 ## Back to Tabula
@@ -103,6 +118,7 @@ Let's load it into R, and in doing so we'll skip the first two rows and add our 
 
 ```{r}
 # Write the code to load the CSV file here
+domestic_migration <- read_csv("data/tabula-md-statistical-handbook (1).csv", skip=2, col_names = c("state_jurisdiction", "Mig. 2011", "Mig. 2012", "Mig. 2013", "Mig. 2014", "Mig. 2015", "Mig. 2016", "Mig. 2017", "Mig. 2018", "Mig. 2019", "Mig. 2011 to 2019"))
 ```
 
 Add a column for the type of migration ("domestic") and populate it:
@@ -111,24 +127,40 @@ Add a column for the type of migration ("domestic") and populate it:
 
 ```{r}
 # Write the code to add the column here
+domestic_migration <- domestic_migration %>%
+  mutate(
+    migration_type = "domestic"
+  )
 ```
 
 ## Answer questions
 **Q5** Which Maryland individual jurisdiction saw the largest net decrease in domestic migration overall?
-**A5** [write your answer here]
+**A5** Baltimore City saw the largest net decrease with a 62834 decrease.
 
 ```{r}
 # Write the code to produce your answer here
+domestic_net_decrease <- domestic_migration %>%
+  group_by(state_jurisdiction) %>%
+  summarise(
+    total_decrease = sum(`Mig. 2011 to 2019`)
+  ) %>%
+  arrange(desc(total_decrease))
 
 ```
 
 **Q6** How many regions & jurisdictions had net positive migration for July 2017, July 2018 and July 2019 (not just individually but all three together)?
-**A6** [write your answer here]
+**A6** There are nine regions and counties.
 
 ```{r}
 # Write the code to produce your answer here
-
+three_year_positive_migration <- domestic_migration %>%
+  filter(
+    `Mig. 2017` >= 0,
+    `Mig. 2018` >= 0,
+    `Mig. 2019` >= 0,
+    `Mig. 2019`- `Mig. 2017` >= 0
+  )
 ```
 
 **Q7** How would you describe this data? Is there a county or region that stands out, and why?
-**A7** [write your answer here]
+**A7** this data shows which counties and regions had a net positive migration increase in a three year period and did not have a net decrease in migration in each year. The one county that stands out the most to me is Talbot county, which for years has gone between migration net loss and net gain and in these three years saw its migration increase go from 9 to 242. 
