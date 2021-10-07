@@ -88,11 +88,13 @@ fourteen_homicides %>%
   group_by(disposition) %>%
   summarise(arrested_amount = sum(disposition == "Closed by arrest")) %>%
   arrange(desc(arrested_amount))
+86/211
 # Here we run the same code for the 2017 set of data and find that 93 arrests were made from a total of 340 cases — a total of 27 percent.
 seventeen_homicides %>%
   group_by(disposition) %>%
   summarise(arrested_amount = sum(disposition == "Closed by arrest")) %>%
   arrange(desc(arrested_amount))
+93/340
 # Display results of code below this codeblock
 
 ```
