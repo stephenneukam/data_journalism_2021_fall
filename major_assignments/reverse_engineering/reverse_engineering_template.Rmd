@@ -101,12 +101,59 @@ seventeen_homicides %>%
 
 ### Sentence 2
 
-* **Sentence text**: [Paste in sentence to engineer here]
-* **Analysis summary**: [Write up two to three sentences describing the results of your analysis.  Were you able to confirm the finding? If not, why not?]
+* **Sentence text**: "While homicide rates remain near historical lows in most American cities, Baltimore and Chicago are now both seeing murder tallies that rival the early 2000s."
+* **Analysis summary**: I was able to confirm the finding that recent homicide numbers rivaled those of the early 2000s based on the total number of homicides seen each year. When comparing the results we can see a steady increase in homicides throughout each year. When looking at 2007 and 2017, there are significantly more homicides in the latter year, as 2007 saw 280 homicides and 2017 saw 340. 
 
 ```{r}
 # Put code to reverse engineer sentence here
-
+baltimore_homicides <- homicide_data %>%
+  filter(city == "Baltimore")
+#Here, we'll use filter and str_detect to create the same datasets from above for each year reported.
+o_seven_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2007"))
+o_eight_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2008"))
+o_nine_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2009"))
+ten_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2010"))
+eleven_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2011"))
+twelve_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2012"))
+thirteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2013"))
+fourteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2014"))
+fifteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2015"))
+sixteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2016"))
+seventeen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2017"))
+#Now we can summarize each data set and see how many homicide cases there were for each year. If done right, we should see an increase. 
+o_seven_homicides%>%
+  summarise(o_seven_total=n())
+o_eight_homicides%>%
+  summarise(o_eight_total=n())
+o_nine_homicides%>%
+  summarise(o_nine_total=n())
+ten_homicides%>%
+  summarise(ten_total=n())
+eleven_homicides%>%
+  summarise(eleven_total=n())
+twelve_homicides%>%
+  summarise(twelve_total=n())
+thirteen_homicides%>%
+  summarise(thirteen_total=n())
+fourteen_homicides%>%
+  summarise(fourteen_total=n())
+fifteen_homicides%>%
+  summarise(fifteen_total=n())
+sixteen_homicides%>%
+  summarise(sixteen_total=n())
+seventeen_homicides%>%
+  summarise(seventeen_total=n())
 # Display results of code below this codeblock
 
 ```
