@@ -160,19 +160,31 @@ seventeen_homicides%>%
 
 ### Sentence 3
 
-* **Sentence text**: [Paste in sentence to engineer here]
-* **Analysis summary**: [Write up two to three sentences describing the results of your analysis.  Were you able to confirm the finding? If not, why not?]
+* **Sentence text**: “For most of the decade before 2015, Baltimore’s annual homicide arrest rate hovered at about 40 percent. Since 2015, the arrest rate hasn’t topped 30 percent in any year. 
+* **Analysis summary**: The only reason I was not able to confirm the finding was because I was unsure of how to move forward in finding the averages of the data. I think however after you check this Derek and make sure I'm on the right track, then we will be able to see that Baltimore's homicide rate decreased at ten percent, and has remained that way since. 
 
 ```{r}
 # Put code to reverse engineer sentence here
+library(tidyverse)
 
+read_csv("~/Documents/GitHub/data-homicides/homicide-data.csv")
+
+homicide_data <-read_csv("homicide-data.csv")
+
+baltimore_homicides <- homicide_data %>%
+  filter(city == "Baltimore") %>%
+  group_by(reported_date = "2007-2014") %>%
+  
+I am stuck here now. So I know I need the data from 2007-2014 complied together to get the averages and then the data from 2014 on to get those averages. Would I create a new dataframe from here? Because then I know I could so something like this- 
+
+  nrow(first_half_data)?second_half_data *100 - to find the averages 
 # Display results of code below this codeblock
 
 ```
 
 ### Sentence 4
 
-* **Sentence text**: [Paste in sentence to engineer here]
+* **Sentence text**: 
 * **Analysis summary**: [Write up two to three sentences describing the results of your analysis.  Were you able to confirm the finding? If not, why not?]
 
 ```{r}
