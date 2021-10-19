@@ -35,7 +35,7 @@ To use the API, you need to [an API key from the Census Bureau](https://api.cens
 **Task** Replace YOUR KEY HERE in the codeblock below with your Census API Key (leave the quotemarks).
 
 ```{r echo=FALSE}
-#census_api_key("YOUR KEY HERE", install=TRUE)
+#census_api_key("8aee6b62d6fc91f426b1707a4f0fdb75e7558ec8", install=TRUE)
 ```
 
 The `install=TRUE` part saves your key for future use.
@@ -102,7 +102,7 @@ alldata <- p00 %>% inner_join(p10)
 And now we calculate the percent change.
 
 **Task** Run the following codeblock to calculate the percentage change and put the state with the largest percentage growth below.
-**Answer**
+**Answer** Nevada
 
 
 ```{r}
@@ -156,10 +156,10 @@ md %>%
 As you can see, some of the error bars are quite wide. Some are narrow. But if the bars overlap, it means the difference between the two counties is within the margin of error, and the differences aren't statistically significant.
 
 Is the difference between Calvert and Montgomery significant?
-**Answer**
+**Answer** Yes
 
 Is the difference between Howard and everyone else significant?
-**Answer**
+**Answer** No
 
 ### Task 7: Joining Multiple Years Together
 
@@ -184,7 +184,7 @@ md10 <- get_acs(geography = "county",
 What we're going to do next is a lot, but each step is simple. We're going to join the data together, so each county has one line of data. Then we're going to rename some fields that repeat. Then we're going to calculate the minimum and maximum value of the estimate using the margin of error. That'll help us later. After that, we're going to calculate a percent change and sort it by that change.
 
 **Task** Run the following codeblock to join the data, rename the population estimates and then calculate the values we need. Notice how we select _after_ we do the initial calculations so we only see the columns we're interested in (and drop the ones we don't want to see). Also note how the select function has the minus sign (-) in front of some columns? That means we don't want to see them in our result. Which counties saw their median incomes fall from 2010-2019? Is the change outside the margin of error for both?
-**Answer**
+**Answer** Somerset County and Caroline County. The change is not outside the margin of error for both.
 
 ```{r}
 md10 %>%
@@ -220,7 +220,7 @@ top_zips <- maryland_ppp %>%
 ```
 
 **Task** Let's get ZCTA household income data from the ACS using tidycensus for the top zip code in `top_zips`. Run the following codeblock to retrieve household income data for all Maryland ZCTAs first, then join them to `top_zips` using the GEOID column. Of the 20 zip codes with the largest amounts, which ones have estimated median household incomes of less than $50,000?
-**Answer**
+**Answer** None of the zip codes have a median household income of less than $50000.
 
 ```{r}
 md_zipcodes <- get_acs(geography="zcta", variables = "B19013_001", state='MD')
