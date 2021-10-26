@@ -29,6 +29,10 @@ options(scipen=999)
 library(tidyverse)
 library(lubridate)
 library(refinr)
+library(tidycensus)
+library(stringr)
+# must put in your Census API key:
+#census_api_key("8aee6b62d6fc91f426b1707a4f0fdb75e7558ec8", install=TRUE)
 ```
 
 ## Load and Cleaning Data
@@ -160,12 +164,75 @@ seventeen_homicides%>%
 
 ### Sentence 3
 
-* **Sentence text**: [Paste in sentence to engineer here]
-* **Analysis summary**: [Write up two to three sentences describing the results of your analysis.  Were you able to confirm the finding? If not, why not?]
+* **Sentence text**: As the murder rate soared, Mayor Catherine Pugh (D) fired Police Commissioner Kevin Davis in January and replaced him with Darryl De Sousa, who in turn resigned just four months later after facing federal charges of failing to file tax returns. De Sousa later pleaded guilty to the charges.
+* **Analysis summary**: To confirm this finding, we need to find if the murder rate in the city was indeed increasing before and during Commissioner Kevin Davis' tenure in his position. We need to load population data for Baltimore and compare that to murder numbers in the city to find the murder rate. We were able to confirm the finding by the Post. In the year before Davis was commissioner, the homicide rate was around .034%. The year he took over, it jumped to .055% and hovered between that number and .052% for the next three years.
 
 ```{r}
 # Put code to reverse engineer sentence here
-
+# Davis was appointed commissioner in 2015 and was fired in Jan. 2019. Because of this, we will look at murder numbers from 2014-2017 to identify the murder rate. Before using the Census API, we need to load variables for the American Community Survey. We will use this data to load the population info for each year.
+acs5 <- load_variables(2019,"acs5", cache = TRUE)
+#This code will give us the population data for each of the years we are highlighting in Baltimore.
+baltimore_population_14 <- get_acs(geography = "county",
+                                   variables = "B01001_001",
+                                   state = "MD",
+                                   year = 2014)
+baltimore_population_15 <- get_acs(geography = "county",
+                                   variables = "B01001_001",
+                                   state = "MD",
+                                   year = 2015)
+baltimore_population_16 <- get_acs(geography = "county",
+                                   variables = "B01001_001",
+                                   state = "MD",
+                                   year = 2016)
+baltimore_population_17 <- get_acs(geography = "county",
+                                   variables = "B01001_001",
+                                   state = "MD",
+                                   year = 2017)
+#This code takes out all the other counties in the datasets that we do not need. It keeps just Baltimore City.
+baltimore_population_14 <- baltimore_population_14 %>%
+  filter(NAME == "Baltimore city, Maryland")
+baltimore_population_15 <- baltimore_population_15 %>%
+  filter(NAME == "Baltimore city, Maryland")
+baltimore_population_16 <- baltimore_population_16 %>%
+  filter(NAME == "Baltimore city, Maryland")
+baltimore_population_17 <- baltimore_population_17 %>%
+  filter(NAME == "Baltimore city, Maryland")
+#This code puts a city column in the population dataset with the value of Baltimore. This will be useful when we combine this dataset with the different years of murder data later.
+baltimore_population_14 <- baltimore_population_14 %>%
+  mutate(city = "Baltimore")
+baltimore_population_15 <- baltimore_population_15 %>%
+  mutate(city = "Baltimore")
+baltimore_population_16 <- baltimore_population_16 %>%
+  mutate(city = "Baltimore")
+baltimore_population_17 <- baltimore_population_17 %>%
+  mutate(city = "Baltimore")
+#We are adding a column in the yearly homicide datasets that shows the total of homicides in that year. This will help us calculate the homicide rate with code when we combine the population and homicide data.
+fourteen_homicides <- fourteen_homicides %>%
+  mutate(total_murders = 211)
+fifteen_homicides <- fifteen_homicides %>%
+  mutate(total_murders = 342)
+sixteen_homicides <- sixteen_homicides %>%
+  mutate(total_murders = 320)
+seventeen_homicides <- seventeen_homicides %>%
+  mutate(total_murders = 340)
+#We are joining the population data with the homicide data by the city column. Then we are adding a column called hom_rate which is total_murders divided by the estimated population for that year for each year we are looking at. The final colum in each dataset will be the murder rate for that year.
+fourteen_homicides_pop <- fourteen_homicides %>%
+  inner_join(baltimore_population_14, by=c("city")) %>%
+  mutate(hom_rate = (total_murders/estimate)*100)
+fifteen_homicides_pop <- fifteen_homicides %>%
+  inner_join(baltimore_population_15, by=c("city")) %>%
+  mutate(hom_rate = (total_murders/estimate)*100)
+sixteen_homicides_pop <- sixteen_homicides %>%
+  inner_join(baltimore_population_16, by=c("city")) %>%
+  mutate(hom_rate = (total_murders/estimate)*100)
+seventeen_homicides_pop <- seventeen_homicides %>%
+  inner_join(baltimore_population_17, by=c("city")) %>%
+  mutate(hom_rate = (total_murders/estimate)*100)
+#We are writing code to simply view the homicide rate for each of these years. I have written as a comment the murder rate next to each year.
+fourteen_homicides_pop %>% select(hom_rate) #.034%
+fifteen_homicides_pop %>% select(hom_rate) #.055%
+sixteen_homicides_pop %>% select(hom_rate) #.052%
+seventeen_homicides_pop %>% select(hom_rate) #.055%
 # Display results of code below this codeblock
 
 ```
