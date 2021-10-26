@@ -50,7 +50,7 @@ First, we'll create a dataframe of those top 10, called maryland_ppp_top_countie
 
 ### Task 3: Create a dataframe of top 10 counties for PPP loans in Maryland
 **Task** Run the following code to create a dataframe of top 10 loans by county in Maryland. In the space below, explain what each step of the code below is doing in English.
-**Answer**
+**Answer** The first line is grouping the dataset by the name of the counties. The second line is counting the total number of loans for each county. The third line is arranging it from least to greatest number of loans. The final line is showing us the top 10 results.
 
 ```{r}
 maryland_ppp_top_counties <- ppp_maryland %>%
@@ -70,7 +70,7 @@ With ggplot, the first thing we'll always do is draw a blank canvas that will ho
 
 ### Task 4: Create an empty ggplot container
 **Task** Run the following code. Explain what you see after running the code in the space below.
-**Answer**
+**Answer** A blank grey box. 
 
 ```{r}
 maryland_ppp_top_counties %>%
@@ -101,7 +101,7 @@ After we've invoked the ggplot() function, you'll notice we're using a + symbol.
 
 ### Task 5: Run the following code
 **Task** Run the following code. Explain what you see after running the code in the space below.
-**Answer**
+**Answer** It gives me a bar graph of loans totals with the x axis sorted in alphabetical order, but the names are overlapping.
 
 ```{r}
 maryland_ppp_top_counties %>%
@@ -113,7 +113,7 @@ This is a very basic chart.  But it's hard to derive much meaning from this char
 
 ### Task 6: Run the following code
 **Task** Run the following code. Explain what you see after running the code in the space below. What has changed from the last codeblock?
-**Answer**
+**Answer** It has reordered the x axis from least to greatest
 
 ```{r}
 maryland_ppp_top_counties %>%
@@ -125,7 +125,7 @@ This is a little more useful. But the bottom is kind of a mess, with overlapping
 
 ### Task 7: Run the following code
 **Task** Run the following code. Explain what you see after running the code in the space below. What has changed from the last codeblock?
-**Answer**
+**Answer** The chart is now verticle, with the names much easier to read. 
 
 ```{r}
 maryland_ppp_top_counties %>%
@@ -144,7 +144,7 @@ It's kind of like applying CSS to html. Here I'm changing the theme slightly to 
 
 ### Task 8: Run the following code
 **Task** Run the following code. Explain what you see after running the code in the space below. What has changed from the last codeblock?
-**Answer**
+**Answer** The names on the y axis are a bit more sleek. The boxes behind the bars are no longer grey.
 
 ```{r}
 maryland_ppp_top_counties %>%
@@ -171,7 +171,7 @@ And now we'll apply the economist theme from that package with theme_economist()
 
 ### Task 10: Run the following code
 **Task** Run the following code. Explain what you see after running the code in the space below. What has changed from the last version of the chart?
-**Answer**
+**Answer** The colors of the chart have changed to reflect The Economist theme.
 ```{r}
 maryland_ppp_top_counties %>%
   ggplot() +
@@ -183,7 +183,7 @@ Those axis titles are kind of a mess. Let's change "count" on the x axis to "tot
 
 ### Task 11: Run the following code
 **Task** Run the following code. Explain what you see after running the code in the space below. What has changed from the last codeblock?
-**Answer**
+**Answer** The names for the x and y axises have changed. The title of the chart is very bold. However, the names are in the wrong spots. They should be flipped for each axis.
 
 ```{r}
 maryland_ppp_top_counties %>%
@@ -211,7 +211,7 @@ So, let's create a dataframe with a count of Maryland loans for each date in our
 
 ### Task 12: Run the following code
 **Task** Run the following code. Explain what you see after running the code in the space below. 
-**Answer**
+**Answer** I see the total numbers of loans by each date, starting with April 3, 2020.
 
 ```{r}
 
@@ -230,7 +230,7 @@ We'll put the date on the x axis and total loans on the y axis.
 
 ### Task 13: Run the following code
 **Task** Run the following code. Explain what you see after running the code in the space below. 
-**Answer**
+**Answer** There is a line graph with each day plotted along the x axis and the volume of loans on the y axis.
 
 ```{r}
 ppp_maryland_loans_by_date %>%
@@ -252,7 +252,7 @@ We'll set the date_breaks to appear for every month; if we wanted every week, we
 
 ### Task 14: Run the following code
 **Task** Run the following code. Explain what you see after running the code in the space below. 
-**Answer**
+**Answer** The x axis is now broken up into each month with the year, but the text is overlapping like the charts above. 
 
 ```{r}
 ppp_maryland_loans_by_date %>%
@@ -267,7 +267,7 @@ Those are a little hard to read, so we can turn them 45 degrees to remove the ov
 
 ### Task 15: Run the following code
 **Task** Run the following code. Explain what you see after running the code in the space below. 
-**Answer**
+**Answer** The dates are now slanted so that they are readable.
 ```{r}
 ppp_maryland_loans_by_date %>%
   ggplot() + 
