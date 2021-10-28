@@ -16,6 +16,15 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Load libraries and establish settings
 
 **Task** Create a codeblock and load appropriate packages and settings for this lab.
+```{r}
+library(tidyverse)
+library(tidycensus)
+library(stringr)
+library(ggrepel)
+install.packages("ggrepel")
+#census_api_key("8aee6b62d6fc91f426b1707a4f0fdb75e7558ec8", install=TRUE)
+```
+
 
 ## Questions
 
@@ -33,6 +42,28 @@ Basically, your chart should look like this image, which will appear when you ru
 
 ```{r}
 knitr::include_graphics(rep("images/chart_1.png"))
+
+wv_ppp_april <- wv_ppp %>%
+  filter(str_detect(date_approved, "^2020-04"))
+
+wv_ppp_april <- wv_ppp_april %>% group_by(date_approved) %>%
+  summarise(
+    total_loans=n()
+    )%>%
+  arrange(desc(total_loans))
+
+#April 28 has the most loans
+
+wv_ppp_april %>% ggplot() + 
+  geom_line(aes(x=date_approved, y=total_loans)) + scale_x_date(date_breaks = "1 day", date_labels = "%b-%d-%Y") + theme(
+    axis.text.x = element_text(angle = 45,  hjust=1)
+  ) + geom_point(aes(x=date_approved, y=total_loans)) + geom_label_repel(aes(x=date_approved, y=total_loans, label=total_loans)) + labs(
+    title = "April WV PPP Loans",
+    x = "Date Approved",
+    y = "Number of Loans",
+    caption = "source: SBA PPP loan database"
+  )
+
 ```
 **A1.** 
 
@@ -43,6 +74,28 @@ knitr::include_graphics(rep("images/chart_1.png"))
 * Use the tidycensus API to get a table of total population by state from the American Community Survey (ACS). To do this, you'll use use the alphanumeric variable for total population, which has the following "label" and "concept": "Estimate!!Total:" and "SEX BY AGE".  
 * Use ggplot to make a horizontal bar chart that shows the top 10 states, with the length of the bar determined by the state's total PPP loans per 100,000 people. Give it an appropriate title, source, and x and y axis titles. 
 * Make the bars on the chart blue! I didn't show you how to do this in the prelab, so do some web sleuthing to figure it out.  
+```{r}
+all_state_ppp <- read_csv("data/state_ppp_all.csv")
+
+acs5 <- load_variables(2019, "acs5", cache = TRUE)
+all_population <- get_acs(geography = "state",
+                          variables = "B01001_001",
+                          year = 2019)
+colnames(all_population) <- c('GEOID', 'state', 'variable', 'estimate', 'moe')
+
+ppp_pop_joined <- all_population %>%
+  inner_join(all_state_ppp, by=c("state")) %>%
+  mutate(per_100k=(total_ppp_loans/estimate)*100000)
+
+ppp_pop_joined %>% ggplot() +
+  geom_bar(aes(x=reorder(state, per_100k), weight=per_100k),fill = "steelblue") + labs (
+    title = "PPP loans per 100,000, all states",
+    x = "States",
+    y = "Loans per 100,000 people",
+    caption = "source: SBA PPP loan database"
+  ) + theme(
+    axis.text.x = element_text(angle = 60,  hjust=1))
+```
 
 **A2.** 
 
@@ -64,9 +117,19 @@ To answer those questions, make a codeblock and do the following:
 2. Filter the data to examine only those loans less than $25,000.
 3. There are a bunch of NAs in the forgiveness amount column, for the purposes of this assignment only, let's assume those are actually supposed to be 0. So make all the NAs 0. 
 4. Make a scatterplot. I didn't show you how to do this, so look it up! 
-5. In the answer space below, describe what you see and answer the questions posed above.  In a general sense, what do you think this means?  
+5. In the answer space below, describe what you see and answer the questions posed above.  In a general sense, what do you think this means? 
+```{r}
+wv_ppp_less25k <- wv_ppp %>%
+  filter(current_approval_amount <= 25000)
 
-**A3.**  
+wv_ppp_less25k$forgiveness_amount[is.na(wv_ppp_less25k$forgiveness_amount)] = 0
+
+ggplot(wv_ppp_less25k, aes(x=amount, y=forgiveness_amount)) + geom_point(size=.2)
+
+```
+
+
+**A3.** It seems as though there were a lot of people that had their loans forgiven and a lot of people that did not have their loans forgiven. For people who had their loans partially forgiven, it seems as though that in most cases, a majority of the loan was forgiven. 
 
 
 -30-
