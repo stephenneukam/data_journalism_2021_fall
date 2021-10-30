@@ -239,11 +239,50 @@ seventeen_homicides_pop %>% select(hom_rate) #.055%
 
 ### Sentence 4
 
-* **Sentence text**: [Paste in sentence to engineer here]
-* **Analysis summary**: [Write up two to three sentences describing the results of your analysis.  Were you able to confirm the finding? If not, why not?]
+* **Sentence text**: For most of the decade before 2015, Baltimore’s annual homicide arrest rate hovered at about 40 percent. Since 2015, the arrest rate hasn’t topped 30 percent in any year.
+* **Analysis summary**: After analysis, I was able to confirm that these findings were correct. Prior to the murder of Freddie Gray in 2015, the homicide arrest rate was higher in Baltimore. In the two years following the death of Freddie Gray, the arrest rate has dropped to below 30 percent.
 
 ```{r}
 # Put code to reverse engineer sentence here
+#First, I ran in the homicide data and filtered a dataset to find the arrest rates between 2007-2014 for Baltimore.
+baltimore_homicides <- homicide_data %>%
+  filter(city == "Baltimore") %>%
+  filter(reported_date>= "2007-01-01" & reported_date <="2014-12-31") %>%
+  group_by(disposition) %>%
+  summarise(count=n())
+#Here, I am adding the open arrests, cases closed by arrest, and those closed without arrest.
+total=(664+109+841)
+#Here, this shows the total amount of cases closed by arrest, divided by the total we found in the above sentence.
+total=(664/1614)*100
+#Now, we have to create data sets for the years following 2015, since the second half of the sentence specifies that each year following 2015, the homicide rata does not go above 30 percent.
+year15_Arrest_rate <- homicide_data %>%
+ filter(city=="Baltimore")%>%
+ filter(reported_date>="20150103" & reported_date <="20151231")%>%
+  group_by(disposition)%>%
+  summarise(count=n())
+#Here, I am adding the open arrests, cases closed by arrest, and those closed without arrest.  
+total=(87+14+241)
+#Here, this shows the total amount of cases closed by arrest, divided by the total we found in the above sentence.
+total=(87/342)*100
+year16_arrest_rate <- homicide_data %>%
+  filter(city=="Baltimore")%>%
+ filter(reported_date>="20160101" & reported_date <="20161231")%>%
+  group_by(disposition)%>%
+  summarise(count=n())
+#Here, I am adding the open arrests, cases closed by arrest, and those closed without arrest.
+total=(72+5+243)
+#Here, this shows the total amount of cases closed by arrest, divided by the total we found in the above sentence.
+total=(72/320)*100
+year17_arrest_rate <- homicide_data %>%
+  filter(city=="Baltimore")%>%
+ filter(reported_date>="20170101" & reported_date <="20171231")%>%
+  group_by(disposition)%>%
+  summarise(count=n())
+#Here, I am adding the open arrests, cases closed by arrest, and those closed without arrest.
+total=(93+11+236)
+#Here, this shows the total amount of cases closed by arrest, divided by the total we found in the above sentence.
+total=(93/340)*100
+#This concludes the data analysis needed for these two sentences. 
 
 # Display results of code below this codeblock
 
@@ -251,11 +290,40 @@ seventeen_homicides_pop %>% select(hom_rate) #.055%
 
 ### Sentence 5
 
-* **Sentence text**: [Paste in sentence to engineer here]
-* **Analysis summary**: [Write up two to three sentences describing the results of your analysis.  Were you able to confirm the finding? If not, why not?]
+* **Sentence text**: Community leaders and residents say that leaves hundreds of families who have been robbed of a loved one without a chance at seeing justice done. Of the 1,002 homicides between 2015 and the beginning of this year, just 252 — one out of every four — resulted in an arrest.
+* **Analysis summary**: I first found that there was in fact 1,002 homicides between 2015 and now. Then I filtered out the dispositions to confirm that 252 ended in an arrest. 
 
 ```{r}
 # Put code to reverse engineer sentence here
+baltimore_homicides <- homicide_data %>%
+  filter(city == "Baltimore")
+o_seven_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2007"))
+o_eight_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2008"))
+o_nine_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2009"))
+ten_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2010"))
+eleven_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2011"))
+twelve_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2012"))
+thirteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2013"))
+fourteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2014"))
+fifteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2015"))
+sixteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2016"))
+seventeen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2017"))
+baltimore_homicides %>%
+  filter(reported_date >= 20150101) %>%
+  filter(disposition == "Closed by arrest") %>%
+  summarise(arrested_amount = sum(disposition == "Closed by arrest")) %>%
+  arrange(desc(arrested_amount))
 
 # Display results of code below this codeblock
 
