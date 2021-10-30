@@ -215,7 +215,7 @@ sixteen_homicides <- sixteen_homicides %>%
   mutate(total_murders = 320)
 seventeen_homicides <- seventeen_homicides %>%
   mutate(total_murders = 340)
-#We are joining the population data with the homicide data by the city column. Then we are adding a column called hom_rate which is total_murders divided by the estimated population for that year for each year we are looking at. The final colum in each dataset will be the murder rate for that year.
+#We are joining the population data with the homicide data by the city column. Then we are adding a column called hom_rate which is total_murders divided by the estimated population for that year for each year we are looking at. The final column in each dataset will be the murder rate for that year.
 fourteen_homicides_pop <- fourteen_homicides %>%
   inner_join(baltimore_population_14, by=c("city")) %>%
   mutate(hom_rate = (total_murders/estimate)*100)
