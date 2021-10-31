@@ -1,0 +1,340 @@
+---
+title: "Reverse Engineering Project"
+author: "Student names here"
+date: "Date here"
+output:
+  html_document:
+    theme: cerulean
+    highlight: pygments
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction 
+
+In this notebook, we are reverse engineering the story, "As police struggle to solve homicides, Baltimore residents see an ‘open season for killing’" (https://www.washingtonpost.com/investigations/as-police-struggle-to-solve-homicides-baltimore-residents-see-an-open-season-for-killing/2018/12/26/7ee561e4-fb24-11e8-8c9a-860ce2a8148f_story.html)
+
+## Load libraries
+
+Loading required libraries for this analysis.
+
+```{r echo=FALSE, message=FALSE}
+options(scipen=999)
+library(tidyverse)
+library(lubridate)
+library(refinr)
+library(tidycensus)
+library(stringr)
+# must put in your Census API key:
+#census_api_key("8aee6b62d6fc91f426b1707a4f0fdb75e7558ec8", install=TRUE)
+```
+
+## Load and Cleaning Data
+
+In this section, describe the source of the data, write a basic data dictionary for data you are working with, and discuss any caveats or issues you discovered working with this data. 
+
+```{r}
+# Load required data
+
+# Path to data should be loaded from folder "data" i.e. read_csv("data/name_of_data.csv")
+
+# Clean required data and prepare for analysis if needed. 
+
+homicide_data <- read_csv("data/homicide-data.csv")
+
+# This data was collected by Washington Post journalists totaling homicide info form 50 American cities. It was collected in different formats and different jurisdictions and was cross-referenced with FBI data to ensure accuracy. The data has already been standardized and cleaned by Washington Post reporters so the datasets were easy to manuveur. I double-checked the accuracy and consistency of spelling in OpenRefine.
+
+```
+
+## Sentences to Engineer
+In this notebook, we are reverse engineering five sentences from the story.
+
+### Sentence 1
+
+* **Sentence text**: “As Baltimore has seen a stunning surge of violence, with nearly a killing each day for the past three years in a city of 600,000, homicide arrests have plummeted. City police made an arrest in 41 percent of homicides in 2014; last year, the rate was just 27 percent, a 14 percentage point drop.”
+* **Analysis summary**: I was able to confirm the findings of this paragraph and data analysis by The Post. By separating the data from Baltimore into different years, it was then possible to summarise how many cases had been closed by arrest and divide that by the total number of homicides to find the arrest percentage.
+
+```{r}
+# Put code to reverse engineer sentence here
+baltimore_homicides <- homicide_data %>%
+  filter(city == "Baltimore")
+# Here we use filter and str_detect to create 11 different datasets for each year of homicide data that we are provided.
+o_seven_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2007"))
+o_eight_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2008"))
+o_nine_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2009"))
+ten_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2010"))
+eleven_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2011"))
+twelve_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2012"))
+thirteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2013"))
+fourteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2014"))
+fifteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2015"))
+sixteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2016"))
+seventeen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2017"))
+# Here we use group_by to isolate the disposition field and summarise the amount of cases that were "closed by arrest." We find that there were 86 cases where there were arrests in 2014 out of 211 total cases. That is an arrest percentage of 41 percent. 
+fourteen_homicides %>%
+  group_by(disposition) %>%
+  summarise(arrested_amount = sum(disposition == "Closed by arrest")) %>%
+  arrange(desc(arrested_amount))
+86/211
+# Here we run the same code for the 2017 set of data and find that 93 arrests were made from a total of 340 cases — a total of 27 percent.
+seventeen_homicides %>%
+  group_by(disposition) %>%
+  summarise(arrested_amount = sum(disposition == "Closed by arrest")) %>%
+  arrange(desc(arrested_amount))
+93/340
+# Display results of code below this codeblock
+
+```
+
+### Sentence 2
+
+* **Sentence text**: "While homicide rates remain near historical lows in most American cities, Baltimore and Chicago are now both seeing murder tallies that rival the early 2000s."
+* **Analysis summary**: I was able to confirm the finding that recent homicide numbers rivaled those of the early 2000s based on the total number of homicides seen each year. When comparing the results we can see a steady increase in homicides throughout each year. When looking at 2007 and 2017, there are significantly more homicides in the latter year, as 2007 saw 280 homicides and 2017 saw 340. 
+
+```{r}
+# Put code to reverse engineer sentence here
+baltimore_homicides <- homicide_data %>%
+  filter(city == "Baltimore")
+#Here, we'll use filter and str_detect to create the same datasets from above for each year reported.
+o_seven_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2007"))
+o_eight_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2008"))
+o_nine_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2009"))
+ten_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2010"))
+eleven_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2011"))
+twelve_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2012"))
+thirteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2013"))
+fourteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2014"))
+fifteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2015"))
+sixteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2016"))
+seventeen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2017"))
+#Now we can summarize each data set and see how many homicide cases there were for each year. If done right, we should see an increase. 
+o_seven_homicides%>%
+  summarise(o_seven_total=n())
+o_eight_homicides%>%
+  summarise(o_eight_total=n())
+o_nine_homicides%>%
+  summarise(o_nine_total=n())
+ten_homicides%>%
+  summarise(ten_total=n())
+eleven_homicides%>%
+  summarise(eleven_total=n())
+twelve_homicides%>%
+  summarise(twelve_total=n())
+thirteen_homicides%>%
+  summarise(thirteen_total=n())
+fourteen_homicides%>%
+  summarise(fourteen_total=n())
+fifteen_homicides%>%
+  summarise(fifteen_total=n())
+sixteen_homicides%>%
+  summarise(sixteen_total=n())
+seventeen_homicides%>%
+  summarise(seventeen_total=n())
+# Display results of code below this codeblock
+
+```
+
+### Sentence 3
+
+* **Sentence text**: As the murder rate soared, Mayor Catherine Pugh (D) fired Police Commissioner Kevin Davis in January and replaced him with Darryl De Sousa, who in turn resigned just four months later after facing federal charges of failing to file tax returns. De Sousa later pleaded guilty to the charges.
+* **Analysis summary**: To confirm this finding, we need to find if the murder rate in the city was indeed increasing before and during Commissioner Kevin Davis' tenure in his position. We need to load population data for Baltimore and compare that to murder numbers in the city to find the murder rate. We were able to confirm the finding by the Post. In the year before Davis was commissioner, the homicide rate was around .034%. The year he took over, it jumped to .055% and hovered between that number and .052% for the next three years.
+
+```{r}
+# Put code to reverse engineer sentence here
+# Davis was appointed commissioner in 2015 and was fired in Jan. 2019. Because of this, we will look at murder numbers from 2014-2017 to identify the murder rate. Before using the Census API, we need to load variables for the American Community Survey. We will use this data to load the population info for each year.
+acs5 <- load_variables(2019,"acs5", cache = TRUE)
+#This code will give us the population data for each of the years we are highlighting in Baltimore.
+baltimore_population_14 <- get_acs(geography = "county",
+                                   variables = "B01001_001",
+                                   state = "MD",
+                                   year = 2014)
+baltimore_population_15 <- get_acs(geography = "county",
+                                   variables = "B01001_001",
+                                   state = "MD",
+                                   year = 2015)
+baltimore_population_16 <- get_acs(geography = "county",
+                                   variables = "B01001_001",
+                                   state = "MD",
+                                   year = 2016)
+baltimore_population_17 <- get_acs(geography = "county",
+                                   variables = "B01001_001",
+                                   state = "MD",
+                                   year = 2017)
+#This code takes out all the other counties in the datasets that we do not need. It keeps just Baltimore City.
+baltimore_population_14 <- baltimore_population_14 %>%
+  filter(NAME == "Baltimore city, Maryland")
+baltimore_population_15 <- baltimore_population_15 %>%
+  filter(NAME == "Baltimore city, Maryland")
+baltimore_population_16 <- baltimore_population_16 %>%
+  filter(NAME == "Baltimore city, Maryland")
+baltimore_population_17 <- baltimore_population_17 %>%
+  filter(NAME == "Baltimore city, Maryland")
+#This code puts a city column in the population dataset with the value of Baltimore. This will be useful when we combine this dataset with the different years of murder data later.
+baltimore_population_14 <- baltimore_population_14 %>%
+  mutate(city = "Baltimore")
+baltimore_population_15 <- baltimore_population_15 %>%
+  mutate(city = "Baltimore")
+baltimore_population_16 <- baltimore_population_16 %>%
+  mutate(city = "Baltimore")
+baltimore_population_17 <- baltimore_population_17 %>%
+  mutate(city = "Baltimore")
+#We are adding a column in the yearly homicide datasets that shows the total of homicides in that year. This will help us calculate the homicide rate with code when we combine the population and homicide data.
+fourteen_homicides <- fourteen_homicides %>%
+  mutate(total_murders = 211)
+fifteen_homicides <- fifteen_homicides %>%
+  mutate(total_murders = 342)
+sixteen_homicides <- sixteen_homicides %>%
+  mutate(total_murders = 320)
+seventeen_homicides <- seventeen_homicides %>%
+  mutate(total_murders = 340)
+#We are joining the population data with the homicide data by the city column. Then we are adding a column called hom_rate which is total_murders divided by the estimated population for that year for each year we are looking at. The final column in each dataset will be the murder rate for that year.
+fourteen_homicides_pop <- fourteen_homicides %>%
+  inner_join(baltimore_population_14, by=c("city")) %>%
+  mutate(hom_rate = (total_murders/estimate)*100)
+fifteen_homicides_pop <- fifteen_homicides %>%
+  inner_join(baltimore_population_15, by=c("city")) %>%
+  mutate(hom_rate = (total_murders/estimate)*100)
+sixteen_homicides_pop <- sixteen_homicides %>%
+  inner_join(baltimore_population_16, by=c("city")) %>%
+  mutate(hom_rate = (total_murders/estimate)*100)
+seventeen_homicides_pop <- seventeen_homicides %>%
+  inner_join(baltimore_population_17, by=c("city")) %>%
+  mutate(hom_rate = (total_murders/estimate)*100)
+#We are writing code to simply view the homicide rate for each of these years. I have written as a comment the murder rate next to each year.
+fourteen_homicides_pop %>% select(hom_rate) #.034%
+fifteen_homicides_pop %>% select(hom_rate) #.055%
+sixteen_homicides_pop %>% select(hom_rate) #.052%
+seventeen_homicides_pop %>% select(hom_rate) #.055%
+# Display results of code below this codeblock
+
+```
+
+### Sentence 4
+
+* **Sentence text**: For most of the decade before 2015, Baltimore’s annual homicide arrest rate hovered at about 40 percent. Since 2015, the arrest rate hasn’t topped 30 percent in any year.
+* **Analysis summary**: After analysis, I was able to confirm that these findings were correct. Prior to the murder of Freddie Gray in 2015, the homicide arrest rate was higher in Baltimore. In the two years following the death of Freddie Gray, the arrest rate has dropped to below 30 percent.
+
+```{r}
+# Put code to reverse engineer sentence here
+#First, I ran in the homicide data and filtered a dataset to find the arrest rates between 2007-2014 for Baltimore.
+baltimore_homicides <- homicide_data %>%
+  filter(city == "Baltimore") %>%
+  filter(reported_date>= "2007-01-01" & reported_date <="2014-12-31") %>%
+  group_by(disposition) %>%
+  summarise(count=n())
+#Here, I am adding the open arrests, cases closed by arrest, and those closed without arrest.
+total=(664+109+841)
+#Here, this shows the total amount of cases closed by arrest, divided by the total we found in the above sentence.
+total=(664/1614)*100
+#Now, we have to create data sets for the years following 2015, since the second half of the sentence specifies that each year following 2015, the homicide rata does not go above 30 percent.
+year15_Arrest_rate <- homicide_data %>%
+ filter(city=="Baltimore")%>%
+ filter(reported_date>="20150103" & reported_date <="20151231")%>%
+  group_by(disposition)%>%
+  summarise(count=n())
+#Here, I am adding the open arrests, cases closed by arrest, and those closed without arrest.  
+total=(87+14+241)
+#Here, this shows the total amount of cases closed by arrest, divided by the total we found in the above sentence.
+total=(87/342)*100
+year16_arrest_rate <- homicide_data %>%
+  filter(city=="Baltimore")%>%
+ filter(reported_date>="20160101" & reported_date <="20161231")%>%
+  group_by(disposition)%>%
+  summarise(count=n())
+#Here, I am adding the open arrests, cases closed by arrest, and those closed without arrest.
+total=(72+5+243)
+#Here, this shows the total amount of cases closed by arrest, divided by the total we found in the above sentence.
+total=(72/320)*100
+year17_arrest_rate <- homicide_data %>%
+  filter(city=="Baltimore")%>%
+ filter(reported_date>="20170101" & reported_date <="20171231")%>%
+  group_by(disposition)%>%
+  summarise(count=n())
+#Here, I am adding the open arrests, cases closed by arrest, and those closed without arrest.
+total=(93+11+236)
+#Here, this shows the total amount of cases closed by arrest, divided by the total we found in the above sentence.
+total=(93/340)*100
+#This concludes the data analysis needed for these two sentences. 
+
+# Display results of code below this codeblock
+
+```
+
+### Sentence 5
+
+* **Sentence text**: Community leaders and residents say that leaves hundreds of families who have been robbed of a loved one without a chance at seeing justice done. Of the 1,002 homicides between 2015 and the beginning of this year, just 252 — one out of every four — resulted in an arrest.
+* **Analysis summary**: I first found that there was in fact 1,002 homicides between 2015 and now. Then I filtered out the dispositions to confirm that 252 ended in an arrest. 
+
+```{r}
+# Put code to reverse engineer sentence here
+baltimore_homicides <- homicide_data %>%
+  filter(city == "Baltimore")
+o_seven_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2007"))
+o_eight_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2008"))
+o_nine_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2009"))
+ten_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2010"))
+eleven_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2011"))
+twelve_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2012"))
+thirteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2013"))
+fourteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2014"))
+fifteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2015"))
+sixteen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2016"))
+seventeen_homicides <- baltimore_homicides %>%
+  filter(str_detect(reported_date, "^2017"))
+baltimore_homicides %>%
+  filter(reported_date >= 20150101) %>%
+  filter(disposition == "Closed by arrest") %>%
+  summarise(arrested_amount = sum(disposition == "Closed by arrest")) %>%
+  arrange(desc(arrested_amount))
+
+# Display results of code below this codeblock
+
+# Data analysis memo
+
+# In their story “As police struggle to solve homicides, Baltimore residents see an ‘open season for killing’”, reporters at the Washington Post found that homicide arrest rates dropped from 40 percent every year from 2007 to 2014 to below 30 percent from 2015 to 2017. This trend can be highly associated with the shooting of Freddie Gray in 2015. Despite this decline, however, homicides continue to rise in Baltimore, with there being at least one killing per day in 2017. Baltimore and Chicago are two of the biggest cities with the largest homicide rates, and, in comparison, other American cities have seen a significant decline of their own. But at the end of the day, grieving families have yet to see justice for their loved ones, forcing them to take action. Only one in four homicides actually result in an arrest, and groups such as Mothers of Murdered Sons and Daughters United hold monthly meetings to try and find solutions to this problem. Law enforcement has yet to do its part, creating an immense amount of frustration in the Baltimore community. 
+# The reporters from The Post had to build the dataset of homicides themselves. The Post collected data from homicides in the largest 50 American cities in the last ten years (2007-2017). The dataset included over 52,000 homicides. The reporters explained that the data came from many different sources, including paper documents. The dataset did have to be cleaned by the Post reporters — as they describe it: “[we] worked for months to clean and standardize it, comparing homicide counts and aggregate closure rates with FBI data to ensure the records were as accurate as possible.” When our group analyzed the data, it was very clean, with no need from us to change the datasets the reporters provided in their repo. The reporters outlined how the process to compile the records was not a simple one. As departments from around the country provided incomplete and insufficient data, the Post had to consulate death certificates, court records and other public documents to make the dataset complete. Along with the reported homicides, the dataset included basic demographic information, the location of the murders and arrest info. The data was also used to map the homicides. However, our group did not use any of the mapping or location data in our reverse engineering of the story.
+# The reporters brought the story to life through interviews from various sources. From grieving parents, to advocates, to the police commissioner himself, anecdotes and expertise made the data make sense. The characters in the story included Daphne Alston, a co-founder of Mothers of Murdered Sons and Daughters United, Gary Tuggle, the Baltimore Police Commissioner, Cynthia Bruce, whose son was shot and killed in 2015, Lawrence Brown, a Morgan State University professor, Tara Huffman, the director of criminal and juvenile justice programs at Open Society Institute in Baltimore, Phil Goff  the president of the Center for Policing Equity, Ray Kelly, the chief executive of No Boundaries Coalition of Central West Baltimore, and, finally, James Dixon, a victim-witness advocate hired by the Baltimore Police Department. Each character brought a new perspective, putting faces to the analyzed data.
+# The core of the story was brought together with the reporters tying real life people and their stories with the statistics that they have found regarding these homicides in big cities. “Homicides have soared in several neighborhoods since Gray’s death. Sandtown-Winchester, where Gray died, has seen 22 more homicides in the three-year period since Gray’s death than it did in the three years before he died. Southwest Baltimore saw its homicides rise by 35, and Greater Rosemont has seen 26 more since 2015,” according to the story. That paragraph is intriguing because it features a real death with Gray and talks about specific neighborhoods. Going into detail about Baltimore and how certain sectors are impacted is eye opening. If the article only featured empty numbers about how many people are killed in the country it wouldn’t have been as interesting as a read. On the flip side, if they were just stories about families dealing with the loss of a family member we wouldn’t understand just how big of an issue there is. The fact that we have Mothers, Fathers, etc. speaking on their losses and numbers to show the scale of the issue makes the story complete.   
+
+
+```
+
+-30-
