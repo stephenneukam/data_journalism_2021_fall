@@ -18,8 +18,21 @@ knitr::opts_chunk$set(echo = TRUE)
 **Task** Create a codeblock and load appropriate packages and settings for this lab. You'll need tidyverse, tidycensus, janitor, sf and tigris, and you'll also need to install your census API key.
 
 ## Load data
+```{r}
+library(tidyverse)
+library(tidycensus)
+library(janitor)
+library(sf)
+library(tigris)
+```
+
 
 **Task** Create a codeblock and load the WV slice of the PPP loan data, which is in the data folder and is called lab_11.rds.
+
+```{r}
+wv_ppp <- read_rds("data/lab_11.rds")
+```
+
 
 ## Questions 
 
@@ -27,7 +40,50 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Then produce a choropleth map that shows West Virginia counties shaded according to the total amount of loans to that industry per 100,000 population. 
 
-Use the magma color palette, and shade on a "log" scale. Also produce a table that shows the total amount of loans per 100,000 population for each county, ranked from highest to lowest, along with the total amount of loans and the total number of loans. 
+Use the magma color palette, and shade on a "log" scale. Also produce a table that shows the total amount of loans per 100,000 population for each county, ranked from highest to lowest, along with the total amount of loans and the total number of loans.
+
+```{r}
+oil_gas_companies <- wv_ppp %>%
+  filter(str_detect(
+    naics_code, "^21"
+  ))
+oil_gas_companies <- oil_gas_companies %>%
+  mutate(zip5 = str_sub(zip, 1, 5)) %>%
+  mutate(project_county_name = str_to_title(project_county_name))
+  
+oil_gas_companies_county <- oil_gas_companies %>%
+  group_by(project_county_name) %>%
+  summarise(total_amount = sum(amount), total_number = n()) %>%
+  arrange(desc(total_amount))
+
+acs5 <- load_variables(2019, "acs5", cache = TRUE)
+
+wv_pop <- get_acs(geography = "county",
+                  variables = c(population = "B01001_001"),
+                  state = "WV",
+                  geometry = TRUE)
+wv_pop <- wv_pop %>%
+  mutate(NAME = str_remove(NAME, ", West Virginia")) %>%
+  mutate(NAME = str_remove(NAME, " County"))
+
+wv_loans_100k <- wv_pop %>%
+  left_join(oil_gas_companies_county, by=c("NAME"="project_county_name"))
+
+wv_loans_100k <- wv_loans_100k %>%
+  mutate(amount_per_100k = (total_amount/estimate)*100000) %>%
+  mutate(total_per_100k = (total_number/estimate)*100000)
+
+ggplot() + 
+  geom_sf(data=wv_loans_100k, aes(fill=amount_per_100k)) + 
+  theme_minimal() +
+  scale_fill_viridis_b(option="magma",trans = "log")
+
+total_per_100k_table <- wv_loans_100k %>%
+  group_by(NAME) %>%
+  arrange(desc(total_per_100k))
+
+```
+
 
 Then answer these questions:
 
@@ -35,6 +91,8 @@ Then answer these questions:
 * Based on the table, what county got the highest total loan amount? What was the total amount per 100K population, the total amount of loans (not population adjusted), how many loans were there, and what's the population?
 
 **A1.** 
+The north east and the south east of the state seem to have gotten the most amount in loans. The highest amount of loans seems to run right through the middle of the state.
+Harrison County got the highest total loan amount. The total amount per 100k was $14.6 million. The total amount was $9.9 million. There were 59 loans to the total 67,908 population.
 
 **Q2.** You want to understand WHY the spatial pattern you saw above exists.  So you grab a shapefile with the latitude and longitude coordinates of every mine permit in West Virginia from the state Department of Environmental Protection. 
 
@@ -48,11 +106,45 @@ Make a map with a point for each one of these mine permits and put a blank map w
 
 What spatial pattern do you see? How does it compare to the spatial pattern in the first map you made?
 
+```{r}
+wv_mines <- st_read("https://tagis.dep.wv.gov/arcgis/rest/services/WVDEP_enterprise/mining_reclamation/MapServer/0/query?where=1%3D1&outFields=*&geometry=&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outSR=4326&f=json")
+
+wv_mines <- wv_mines %>%
+  filter(expiredate >= as.Date('2021/09/01'))
+
+counties <- counties()
+
+wv_counties <- counties %>%
+  filter(STATEFP == "54")
+
+wv_counties %>%
+  ggplot() + 
+  geom_sf() + 
+  theme_minimal()
+
+ggplot() + 
+  geom_sf(data=wv_counties) + 
+  geom_sf(data=wv_mines) +
+  theme_minimal()
+```
+
 **A2.**
+The area where mines are most concentrated are generally the areas where the highest amount and number of ppp loans were found.
 
 **Q3.** To confirm the spatial comparison you identified in question 2, let's create a new map that layers the mine location points on top of our PPP choropleth map we created in question 1. What do you notice about the amount of mines in the county that has the highest total loan amount per 100K?
 
+```{r}
+ggplot() + 
+  geom_sf(data=wv_counties) +
+  geom_sf(data=wv_loans_100k, aes(fill=amount_per_100k)) + 
+  geom_sf(data=wv_mines) +
+  theme_minimal() +
+  scale_fill_viridis_b(option="magma",trans = "log")
+```
+
+
 **A3.**
+There is only one listed mine in that county (it is on the border, could be in the other county)
 
 **Q4.** Starting from the original WV ppp dataframe, examine the loans to companies in "Mining, Quarrying, and Oil and Gas Extraction" in the county with the highest total loan amount per 100K (you can use the table you created in question 1 to identify the top county)?
 * What single company accounts for the biggest chunk of the total loan amount? 
@@ -60,5 +152,20 @@ What spatial pattern do you see? How does it compare to the spatial pattern in t
 * How many jobs did they save, according to the data?
 * What's your hypothesis for why a company in their specific industry would need to seek a PPP loan during the pandemic?
 
+```{r}
+oil_gas_companies_harrison <- oil_gas_companies %>%
+  filter(project_county_name == "Harrison")
+
+oil_gas_companies_harrison %>% 
+  group_by(name) %>%
+  summarise(total_amount = sum(amount)) %>%
+  arrange(desc(total_amount))
+```
+
+
 **A4.**
+1. ET360 LLC account for the highest amount of loans in the county.
+2. They are in the "support activities for oil and gas operations" industry. They provides trucking and transportation services for the oil and gas industry.
+3. The data claims they save 178 jobs.
+4. I think this industry would need a loan because as the pandemic hit, people were using less oil and gas because they were travelling less. The demand for oil and gas fell, most likely meaning that this company saw a decrease in operatio for transportation services as companies produce less oil and gas.
 -30-
