@@ -1,0 +1,156 @@
+---
+title: "Data_analysis.rmd"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+## Loading essential libraries
+install.packages("readxl")
+library(tidyverse)
+library(tidycensus)
+library(janitor)
+library(tigris)
+library(naniar)
+library(readxl)
+library(rvest)
+
+## Loading in homicide data
+
+homicide_data <- read_csv("data/homicide-data.csv")
+
+## Before we start, we are going to standardize the dates to make them easier to read
+homicide_data <- homicide_data %>%
+  mutate(date = date(mdy_hms(reported_date)))
+
+## Question 1: Cities where the young get murdered. What cities have the highest rate of killings of people under 21? What cities have the most killings of people under 21? In 2012, the Chicago Reporter reported that more young Americans (under 21) die in Chicago than in any other city. Is this true still? It may have the highest total, but does it have the highest rate, which is more effective to adjust for population?
+
+## The age column is a character, but to work with the age of those killed, it has to be a dbl. For this, we have to first make all "Unknown" entries into N/A so that we can make this change
+
+homicide_data_cleaned <- homicide_data %>%
+  mutate(victim_age = na_if(victim_age, "Unknown"))
+
+## Changing column to numeric
+
+homicide_data_cleaned <- homicide_data_cleaned %>%
+  mutate(victim_age = as.numeric(victim_age))
+
+## To make it easier to count and group the number of killings uder 21, we are going to create a new column and call it "Under_21" and fill it with True and False if the age of the killed is under 21 or not.
+homicide_data_cleaned <- homicide_data %>%
+  mutate(under_21 = if_else(victim_age < 21, "True", "False"))
+
+## Change victim age back to numeric
+
+homicide_data_cleaned <- homicide_data_cleaned %>%
+  mutate(victim_age = as.numeric(victim_age))
+
+## Now to find out which cities have the highest total of murders of people under 21. We will group by city and count the number of "True" results in the under_21 category for the cities.
+under_21_totals <- homicide_data_cleaned %>%
+  filter(under_21 == "True") %>%
+  group_by(city,under_21) %>%
+  count() %>%
+  arrange(desc(under_21))
+## We find that between 2010 and 2017, there were 1412 killings of people under 21 in Chicago, 575 in Philadelphia, 475 in Baltimore and 434 in Houston. We can conclude that, yes, Chicago is where the highest total of people under 21 get killed. In Chicago, what is the average age of those who get killed under 21?
+homicide_data_cleaned %>%
+  filter(city == "Chicago", under_21 == "True") %>%
+  summarise(total_age = sum(victim_age)) %>%
+  summarise(total_age/1412)
+
+## The average age of those killed under 21 in Chicago is 16.75 years old. But, is Chicago where the highest rate of kids under 21 die? To find this out, we first need to add population data for each city. We're going to scrape a webpage that has populations for American cities.
+
+pop_url <- "https://ballotpedia.org/Largest_cities_in_the_United_States_by_population"
+
+city_pop <- pop_url %>%
+  read_html() %>%
+  html_table()
+
+city_pop <- city_pop[[2]]
+
+## Writing it as a csv so we can load it back in and skip the first row.
+
+write_csv(city_pop, "data/city_pops.csv")
+
+city_pop <- read_csv("data/city_pops.csv", skip = 1)
+
+## This dataset is a bit messy. We are going to clean it up, giving it correct column names and only grabbing the columns we need.
+
+city_pop <- city_pop %>%
+  select(City, population) %>%
+  separate(City, into = c("City","State"), sep = ", ")
+
+city_pop <- city_pop %>%
+  select(City, population)
+
+## This dataframe is missing population numbers for Savannah and Washington. We will input those number manually.
+
+city_pop <- city_pop %>%
+  add_row(City = "Savannah", population = 145403) %>%
+  add_row(City = "Washington", population = 692683)
+
+## Now we are going to join the population data into the homicide data
+
+homicide_data_cleaned <- homicide_data_cleaned %>%
+  inner_join(city_pop, by=c("city" = "City"))
+
+homicide_data_cleaned %>%
+  group_by(city) %>%
+  count()
+
+## Back to calculating the rate of murders of people under 21.
+
+under_21_rate <- homicide_data_cleaned %>%
+  filter(under_21 == "True") %>%
+  group_by(city,under_21, population) %>%
+  count() %>%
+  arrange(desc(under_21))
+
+under_21_rate <- under_21_rate %>%
+  mutate(homicide_rate = (n/population)*100000)
+
+## We find that actually, St. Louis is the city where young people die at the highest rate, with 97 deaths per 100000 people. Baltimore, New Orleans and Birmingham follow, with Chicago at the fifth-highest rate. What is the average age of the people that are killed under the age of 21 in St. Louis? 
+
+homicide_data_cleaned %>%
+  filter(city == "St. Louis", under_21 == "True") %>%
+  summarise(total_age = sum(victim_age)) %>%
+  summarise(total_age/309)
+
+## The average age is 17.39 years old. 
+
+## Question 2: Do higher policing budgets lead to higher arrest rates in cities? Where are those policing budgets the highest?
+
+## First, we are going to scrape information from Vera.org with police budget data.
+
+budget_url <- "https://www.vera.org/publications/what-policing-costs-in-americas-biggest-cities"
+  
+police_budgets <- budget_url %>%
+  httr::GET(config = httr::config(ssl_verifypeer = FALSE)) %>%
+  read_html() %>%
+  html_table()
+
+police_budgets <- budget_url %>%
+  httr::GET(config = httr::config(ssl_verifypeer = FALSE)) %>%
+  read_html() %>%
+  html_element("tr")
+
+## Derek, when I run this code I keep getting either a list of 0 when I run html_table or html_element. I tried to turn the page into a PDF and get it through Tabula but no cigar. What am I doing wrong here? If I can get this table loaded in, the plan is to join it with the homicide data and calculate the arrest rate in cities where the police budget is the highest and lowest. That shouldn't be too difficult to do, if I could only scrape this table. Any pointers? Ideas? I had to run the httr::GET(config = httr::config(ssl_verifypeer = FALSE)) code bc it kept saying the certificate had expired.
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
