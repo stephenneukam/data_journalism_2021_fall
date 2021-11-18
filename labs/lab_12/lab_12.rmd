@@ -21,6 +21,14 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 # Turn off scientific notation
 options(scipen=999)
+install.packages("ggrepel")
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(ggrepel)
+library(sf)
+library(tidycensus)
+library(tigris)
 ```
 
 ## Questions
@@ -39,9 +47,37 @@ Then write code that will construct the sentence about the data described above 
 
 Put your sentence in the answer below.
 
-**A1.**
+**A1.** "The number of children under 12 in Maryland with their first vaccine shot on November 16 decreased by -62.47 percent compared to the week before and decreased by -32.04 percent compared to the day before"
 
 ```{r}
+md_vaccines <- read_csv("https://raw.githubusercontent.com/state-of-maryland/VaccineCSVs/master/MD_COVID19_VaccinationPercentAgeGroupPopulation.csv") %>%
+  clean_names() %>%
+  mutate(vaccination_date = date(mdy_hms(vaccination_date)))
+
+md_vaccines$day <- weekdays(as.Date(md_vaccines$vaccination_date))
+
+under_12_vax <- md_vaccines %>%
+  filter(age_range == "11 and Under")
+
+ranked <- under_12_vax %>%
+  mutate(rank = min_rank(desc(first_daily_dose))) %>%
+  arrange(desc(vaccination_date))
+
+latest_date <- ranked %>% slice(1)
+one_week_ago <- ranked %>% filter(vaccination_date == latest_date$vaccination_date - 7)
+one_day_ago <- ranked %>% filter(vaccination_date == latest_date$vaccination_date - 1)
+latest_date <- latest_date %>%
+  mutate(pct_change_week = (first_daily_dose - one_week_ago$first_daily_dose)/one_week_ago$first_daily_dose *100) %>%
+  mutate(pct_change_day = (first_daily_dose - one_day_ago$first_daily_dose)/one_day_ago$first_daily_dose *100)
+
+changetext <- round(latest_date$pct_change_week[[1]], digits=2)
+changetext2 <- round(latest_date$pct_change_day[[1]], digits=2)
+direction <- if_else(changetext > 0, "increased", "decreased")
+direction2 <- if_else(changetext2 > 0, "increased", "decreased")
+
+descrip <- paste("The number of children under 12 in Maryland with their first vaccine shot on ", format(latest_date$vaccination_date, format="%B %d"), " ", direction, " by ", changetext, " percent compared to the week before", " and ", direction2, " by ", changetext2, " percent compared to the day before", sep="")
+descrip
+
 ```
 
 **Q2.** Maryland produces a [CSV file](https://raw.githubusercontent.com/state-of-maryland/VaccineCSVs/master/Vax_ZIP_CODE_FirstSecondSingle_Totals_Raw.csv) showing the total number of vaccinations by zip code and -- interestingly -- it includes non-Maryland zip codes (as well as some zip codes that seem to be bad data). write a script that reads the CSV file, making the columns more readable and adding today's date. Then output the top 25 Maryland zip codes and top 25 non-Maryland zip codes based on number of people fully vaccinated, and write both dataframes out to CSV files, using the following name formats:
@@ -59,9 +95,40 @@ To do that, you will need to:
 
 Google the top 2-3 zip codes from both Maryland and non-Maryland results and describe them in your answer.
 
-**A2.**
+**A2.** All three top Maryland zip codes are located in Montgomery County. All three top non_Maryland zip codes are located in Washington, D.C.
 
 ```{r}
+format(Sys.Date(), '%Y%m%d')
+vax_totals <- read_csv("https://raw.githubusercontent.com/state-of-maryland/VaccineCSVs/master/Vax_ZIP_CODE_FirstSecondSingle_Totals_Raw.csv") %>%
+  clean_names() %>%
+  mutate(latest_date = format(Sys.Date(), '%Y%m%d'))
+
+vax_totals <- vax_totals %>%
+  na.omit()
+
+vax_totals <- vax_totals %>%
+  filter(zip_code > 9999)
+
+md_totals <- vax_totals %>%
+  filter(zip_code > 20600, zip_code < 21931)
+
+md_top_25 <- md_totals %>%
+  group_by(zip_code) %>%
+  summarise(fully_vax_total = sum(fully_vaccinated)) %>%
+  arrange(desc(fully_vax_total)) %>%
+  top_n(25)
+
+other_totals <- vax_totals %>%
+  filter(!zip_code > 20600, zip_code < 21931)
+
+other_top_25 <- other_totals %>%
+  group_by(zip_code) %>%
+  summarise(fully_vax_total = sum(fully_vaccinated)) %>%
+  arrange(desc(fully_vax_total)) %>%
+  top_n(25)
+
+write_csv(md_top_25, "maryland_zips_yyyymmdd.csv")
+write_csv(other_top_25, "non_maryland_zips_yyyymmdd.csv")
 ```
 
 **Q3.** Maryland has had one of the more successful vaccination rates, but you want to understand where a significant portion of the population remains less than fully vaccinated. Make a dataframe of all Maryland zip codes from the vaccination data you used in Q2 and join it to Maryland zip code population data from the Census API. Calculate the percentage of fully vaccinated for each zip code and then make a map showing the zip codes with less than 50 percent fully vaccinated. Put a blank map with the outline of Maryland counties (which you can get from Tigris) behind it for context. Add a label to the map describing what the data is and include the date from the vaccination data (programmatically, so you can run it every day).
@@ -70,7 +137,46 @@ You WILL need to ensure that the columns you use to join the two dataframes are 
 
 Describe the output of the map below, and say what you think the most interesting areas are.
 
-**A3.**
+**A3.** The map is a choropleth map that shows which counties have less than 50% of their population vaccinated. The highest concentration of these counties are on the Eastern Shore and Western Maryland. There are areas where there are higher concentrations of conservative voters.
 
 ```{r}
+md_zips <- get_acs(geography = "zcta",
+                   variables = c(population = "B01001_001"),
+                   state = "MD",
+                   geometry = TRUE,
+                   cache = TRUE)
+
+md_zips <- md_zips %>%
+  mutate(zip_code = GEOID) %>%
+  mutate(zip_code = as.numeric(zip_code))
+
+joined <- md_totals %>%
+  left_join(md_zips, by=c("zip_code")) %>%
+  mutate(percent_vaxxed = (fully_vaccinated/estimate)*100)
+
+less_than_50 <- joined %>%
+  filter(percent_vaxxed < 50)
+
+counties <- counties()
+
+md_counties <- counties %>%
+  filter(STATEFP == "24")
+
+md_counties %>%
+  ggplot() + 
+  geom_sf() + 
+  theme_minimal()
+
+ggplot() + 
+  geom_sf(data = md_counties) +
+  geom_sf(data=less_than_50$geometry, aes(fill=less_than_50$percent_vaxxed)) +
+  theme_minimal() +
+  scale_fill_viridis_b(option="magma",trans = "log") +
+  labs(
+    title = title
+  )
+
+title <- paste("MD counties with less than 50% population vaccinated as of", datetext)
+datetext <- format(Sys.Date(), '%m/%d/%y')
+title
 ```
