@@ -75,6 +75,7 @@ city_pop <- read_csv("data/city_pops.csv", skip = 1)
 ## This dataset is a bit messy. We are going to clean it up, giving it correct column names and only grabbing the columns we need.
 
 city_pop <- city_pop %>%
+  mutate(population = `Population (2013)`) %>%
   select(City, population) %>%
   separate(City, into = c("City","State"), sep = ", ")
 
@@ -133,6 +134,62 @@ police_budgets <- budget_url %>%
   html_element("tr")
 
 ## Derek, when I run this code I keep getting either a list of 0 when I run html_table or html_element. I tried to turn the page into a PDF and get it through Tabula but no cigar. What am I doing wrong here? If I can get this table loaded in, the plan is to join it with the homicide data and calculate the arrest rate in cities where the police budget is the highest and lowest. That shouldn't be too difficult to do, if I could only scrape this table. Any pointers? Ideas? I had to run the httr::GET(config = httr::config(ssl_verifypeer = FALSE)) code bc it kept saying the certificate had expired.
+
+## Question 3: Poverty and homicides. Is there a connection between cities that have high poverty rates and high numbers and rates of homicides? To find this out, we have to first load in income data for each city/
+
+acs5 <- load_variables(2019, "acs5", cache = TRUE)
+
+below_poverty_level <- get_acs(geography = "place",
+                               variables = "B06012_002",
+                               cache = TRUE)
+
+below_poverty_level_cleaned <- below_poverty_level %>%
+  select(NAME, estimate) %>%
+  separate(NAME, into = c("City","State"), sep = ", ")
+
+below_poverty_level_cleaned <- below_poverty_level_cleaned %>%
+  select(City, estimate, State) %>%
+  mutate(City = str_remove_all(City, " city")) %>%
+  mutate(pop_below_poverty_line = estimate) %>%
+  mutate(State = state.abb[match(below_poverty_level_cleaned$State, state.name)])
+
+below_poverty_level_cleaned <- below_poverty_level_cleaned %>%
+  select(City, State, pop_below_poverty_line)
+
+## Now we have to join the poverty data to the homicide and population data
+
+homicide_poverty <- homicide_data_cleaned %>%
+  left_join(below_poverty_level_cleaned, by=c("city"="City", "state"="State"))
+
+## Now we are going to calculate the percent of population in each city that is under 100% of the poverty line
+
+homicide_poverty <- homicide_poverty %>%
+  mutate(percent_poverty = (pop_below_poverty_line/population)*100)
+
+## Now lets find the homicide rate for each city and rank which cities have the highest homicide rates (per 100000 people). We should be able to see if there is any coorelation between poverty rate and homicide rate.
+
+homicide_poverty <- homicide_poverty %>%
+  select(city, population, percent_poverty) %>%
+  group_by(city, population, percent_poverty) %>%
+  count()
+
+homicide_poverty <- homicide_poverty %>%
+  mutate(homicide_rate = (n/population)*100000)
+
+## Derek, is there a way to calculate the average poverty rate of the bottom 20 or so states in this dataframe when sorted by homicide rate and then calculate the average poverty rate of the top 20? Just eyeballing the dataframe, it looks as though there is a noticeably higher average poverty rate in the states with the highest homicide rates than the ones with the lowest.
+
+#Question 4: Whicb ciy has the highest amount of open cases? 
+#first we should filter the data to see just our open cases 
+unsolved_homicides <- homicide_data %>%
+  filter(disposition=="Open/No arrest") %>%
+  select(city, state, disposition)
+#now we can find the totals for each city and arrange them spo we can see the city with the highest number of open cases 
+unsolved_homicides_clean <- unsolved_homicides %>%
+   mutate(city= str_to_title(city)) %>%
+    group_by(city) %>%
+    summarise(disposition = n()) %>%
+    arrange(desc(disposition))
+#As we can see, Chicago has the most unsolved homicides with 3686. Baltimore is second with 1673 folowed by Detroit with 146.
 ```
 
 ## R Markdown
