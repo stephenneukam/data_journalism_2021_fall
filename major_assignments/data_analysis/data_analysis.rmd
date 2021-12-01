@@ -14,16 +14,16 @@ library(tigris)
 library(naniar)
 library(readxl)
 library(rvest)
+library(corrr)
 
 ## Loading in homicide data
 
 homicide_data <- read_csv("data/homicide-data.csv")
 
-## Before we start, we are going to standardize the dates to make them easier to read
-homicide_data <- homicide_data %>%
-  mutate(date = date(mdy_hms(reported_date)))
+## As Baltimore crosses the 300 mark for homicides this year, a flood of explanations for the murders have emerged. Finger pointing in the city and state has continued, with different actors and departments assigning blame to different areas. Some in the city contend that the police do not have enough resources to combat the violence. Some, like Mayor Brandon Scott, argue that the violence stems from underlying factors, like years and years of poverty and a lack of funding for education. To test these arguments, we aggregated data points for a number of variables to see whether there was a statistical correlation between them and homicides across the nation.
 
-## Question 1: Cities where the young get murdered. What cities have the highest rate of killings of people under 21? What cities have the most killings of people under 21? In 2012, the Chicago Reporter reported that more young Americans (under 21) die in Chicago than in any other city. Is this true still? It may have the highest total, but does it have the highest rate, which is more effective to adjust for population?
+
+## Before getting started, we need to clean the homicide data a bit. Let's do that first:
 
 ## The age column is a character, but to work with the age of those killed, it has to be a dbl. For this, we have to first make all "Unknown" entries into N/A so that we can make this change
 
@@ -35,28 +35,7 @@ homicide_data_cleaned <- homicide_data %>%
 homicide_data_cleaned <- homicide_data_cleaned %>%
   mutate(victim_age = as.numeric(victim_age))
 
-## To make it easier to count and group the number of killings uder 21, we are going to create a new column and call it "Under_21" and fill it with True and False if the age of the killed is under 21 or not.
-homicide_data_cleaned <- homicide_data %>%
-  mutate(under_21 = if_else(victim_age < 21, "True", "False"))
-
-## Change victim age back to numeric
-
-homicide_data_cleaned <- homicide_data_cleaned %>%
-  mutate(victim_age = as.numeric(victim_age))
-
-## Now to find out which cities have the highest total of murders of people under 21. We will group by city and count the number of "True" results in the under_21 category for the cities.
-under_21_totals <- homicide_data_cleaned %>%
-  filter(under_21 == "True") %>%
-  group_by(city,under_21) %>%
-  count() %>%
-  arrange(desc(under_21))
-## We find that between 2010 and 2017, there were 1412 killings of people under 21 in Chicago, 575 in Philadelphia, 475 in Baltimore and 434 in Houston. We can conclude that, yes, Chicago is where the highest total of people under 21 get killed. In Chicago, what is the average age of those who get killed under 21?
-homicide_data_cleaned %>%
-  filter(city == "Chicago", under_21 == "True") %>%
-  summarise(total_age = sum(victim_age)) %>%
-  summarise(total_age/1412)
-
-## The average age of those killed under 21 in Chicago is 16.75 years old. But, is Chicago where the highest rate of kids under 21 die? To find this out, we first need to add population data for each city. We're going to scrape a webpage that has populations for American cities.
+## We also need to load in homicide data
 
 pop_url <- "https://ballotpedia.org/Largest_cities_in_the_United_States_by_population"
 
@@ -97,45 +76,43 @@ homicide_data_cleaned %>%
   group_by(city) %>%
   count()
 
-## Back to calculating the rate of murders of people under 21.
+## One of the questions we wanted to look at was how the size of police budgets affects the homicide rate in cities. In 2020, Baltimore had the ninth overall largest police budget out of U.S. cities and the highest money spent per resident. In Baltimore alone, this would suggest that there was no correlation between a high police budget and the murder rate. Let's see what the data suggests:
 
-under_21_rate <- homicide_data_cleaned %>%
-  filter(under_21 == "True") %>%
-  group_by(city,under_21, population) %>%
-  count() %>%
-  arrange(desc(under_21))
+## loading in police budget data
 
-under_21_rate <- under_21_rate %>%
-  mutate(homicide_rate = (n/population)*100000)
+budget_url <- "https://storage.googleapis.com/vera-web-assets/data/datasets/City-PD_HoverStats-12-2-2020-2.csv"
 
-## We find that actually, St. Louis is the city where young people die at the highest rate, with 97 deaths per 100000 people. Baltimore, New Orleans and Birmingham follow, with Chicago at the fifth-highest rate. What is the average age of the people that are killed under the age of 21 in St. Louis? 
+budget <- read.csv(budget_url)
 
-homicide_data_cleaned %>%
-  filter(city == "St. Louis", under_21 == "True") %>%
-  summarise(total_age = sum(victim_age)) %>%
-  summarise(total_age/309)
+budget <- budget %>%
+  select(City, State.Code, City...per.resident.for.police)
 
-## The average age is 17.39 years old. 
+homicide_budegt <- homicide_data_cleaned %>%
+  left_join(budget, by=c("city"="City", "state" = "State.Code"))
 
-## Question 2: Do higher policing budgets lead to higher arrest rates in cities? Where are those policing budgets the highest?
+homicide_budget <- na.omit(homicide_budegt)
 
-## First, we are going to scrape information from Vera.org with police budget data.
+homicide_budget <- homicide_budget %>%
+  select(city, population, City...per.resident.for.police) %>%
+  group_by(city, population, City...per.resident.for.police) %>%
+  count()
 
-budget_url <- "https://www.vera.org/publications/what-policing-costs-in-americas-biggest-cities"
-  
-police_budgets <- budget_url %>%
-  httr::GET(config = httr::config(ssl_verifypeer = FALSE)) %>%
-  read_html() %>%
-  html_table()
+homicide_budget <- homicide_budget %>%
+  mutate(homicide_rate = (n/population)*100000) %>%
+  arrange(desc(City...per.resident.for.police))
 
-police_budgets <- budget_url %>%
-  httr::GET(config = httr::config(ssl_verifypeer = FALSE)) %>%
-  read_html() %>%
-  html_element("tr")
+homicide_budget %>%
+  ggplot() +
+  geom_point(aes(x=City...per.resident.for.police,y=homicide_rate)) +
+  geom_smooth(aes(x=City...per.resident.for.police,y=homicide_rate), method="lm")
 
-## Derek, when I run this code I keep getting either a list of 0 when I run html_table or html_element. I tried to turn the page into a PDF and get it through Tabula but no cigar. What am I doing wrong here? If I can get this table loaded in, the plan is to join it with the homicide data and calculate the arrest rate in cities where the police budget is the highest and lowest. That shouldn't be too difficult to do, if I could only scrape this table. Any pointers? Ideas? I had to run the httr::GET(config = httr::config(ssl_verifypeer = FALSE)) code bc it kept saying the certificate had expired.
+cor.test(homicide_budget$City...per.resident.for.police, homicide_budget$homicide_rate) 
 
-## Question 3: Poverty and homicides. Is there a connection between cities that have high poverty rates and high numbers and rates of homicides? To find this out, we have to first load in income data for each city/
+## The statistics suggest that there is somewhat of a positive correlation between a larger police budget and a higher homicide rate. 
+
+## What about poverty data?
+
+## Poverty and homicides. Is there a connection between cities that have high poverty rates and high numbers and rates of homicides? To find this out, we have to first load in income data for each city/
 
 acs5 <- load_variables(2019, "acs5", cache = TRUE)
 
@@ -174,11 +151,117 @@ homicide_poverty <- homicide_poverty %>%
   count()
 
 homicide_poverty <- homicide_poverty %>%
+  mutate(homicide_rate = (n/population)*100000) %>%
+  arrange(desc(percent_poverty))
+
+homicide_poverty <- na.omit(homicide_poverty)
+
+top_poverty <- homicide_poverty %>%
+  filter(percent_poverty > 19)
+
+bottom_poverty <- homicide_poverty %>%
+  filter(percent_poverty < 19)
+
+top_poverty %>%
+  summarise(mean = mean(top_poverty$homicide_rate)) %>%
+  ungroup() %>%
+  slice(1) %>%
+  select(mean)#212.6915
+
+bottom_poverty %>%
+  summarise(mean = mean(bottom_poverty$homicide_rate)) #113.3883
+
+homicide_poverty %>%
+  ggplot() +
+  geom_point(aes(x=percent_poverty,y=homicide_rate)) +
+  geom_smooth(aes(x=percent_poverty,y=homicide_rate), method="lm")
+
+cor.test(homicide_poverty$percent_poverty, homicide_poverty$homicide_rate) ## good correlation
+
+## The stats suggest that there is a pretty good correlation between poverty rates and homicide rates. What about education spending?
+
+## loading in education data
+
+ed_spending <- read.csv("data/ed_spending.csv")
+
+## cleaning ed data
+
+ed_spending <- ed_spending %>%
+  slice(-6,-15, -18, -22,-27) %>%
+  mutate(Per_pupil_spending = as.numeric(Per_pupil_spending))
+
+homicide_education <- homicide_data_cleaned %>%
+  left_join(ed_spending, by=c("city"="City"))
+
+homicide_education <-  na.omit(homicide_education)
+
+homicide_education <- homicide_education %>%
+  select(city, population, Per_pupil_spending) %>%
+  group_by(city, population, Per_pupil_spending) %>%
+  count()
+
+homicide_education <- homicide_education %>%
+  mutate(homicide_rate = (n/population)*100000) %>%
+  arrange(desc(Per_pupil_spending))
+
+homicide_education %>%
+  ggplot() +
+  geom_point(aes(x=Per_pupil_spending,y=homicide_rate)) +
+  geom_smooth(aes(x=Per_pupil_spending,y=homicide_rate), method="lm")
+
+cor.test(homicide_education$Per_pupil_spending, homicide_education$homicide_rate) ## no coorelation 
+
+
+## Question 4: Cities where the young get murdered. What cities have the highest rate of killings of people under 21? What cities have the most killings of people under 21? In 2012, the Chicago Reporter reported that more young Americans (under 21) die in Chicago than in any other city. Is this true still? It may have the highest total, but does it have the highest rate, which is more effective to adjust for population?
+
+
+## To make it easier to count and group the number of killings uder 21, we are going to create a new column and call it "Under_21" and fill it with True and False if the age of the killed is under 21 or not.
+homicide_data_cleaned <- homicide_data %>%
+  mutate(under_21 = if_else(victim_age < 21, "True", "False"))
+
+## Change victim age back to numeric
+
+homicide_data_cleaned <- homicide_data_cleaned %>%
+  mutate(victim_age = as.numeric(victim_age))
+
+## Now to find out which cities have the highest total of murders of people under 21. We will group by city and count the number of "True" results in the under_21 category for the cities.
+under_21_totals <- homicide_data_cleaned %>%
+  filter(under_21 == "True") %>%
+  group_by(city,under_21) %>%
+  count() %>%
+  arrange(desc(under_21))
+
+## We find that between 2010 and 2017, there were 1412 killings of people under 21 in Chicago, 575 in Philadelphia, 475 in Baltimore and 434 in Houston. We can conclude that, yes, Chicago is where the highest total of people under 21 get killed. In Chicago, what is the average age of those who get killed under 21?
+homicide_data_cleaned %>%
+  filter(city == "Chicago", under_21 == "True") %>%
+  summarise(total_age = sum(victim_age)) %>%
+  summarise(total_age/1412)
+
+## The average age of those killed under 21 in Chicago is 16.75 years old. But, is Chicago where the highest rate of kids under 21 die? To find this out, we first need to add population data for each city. We're going to scrape a webpage that has populations for American cities.
+
+
+## Back to calculating the rate of murders of people under 21.
+
+under_21_rate <- homicide_data_cleaned %>%
+  filter(under_21 == "True") %>%
+  group_by(city,under_21, population) %>%
+  count() %>%
+  arrange(desc(under_21))
+
+under_21_rate <- under_21_rate %>%
   mutate(homicide_rate = (n/population)*100000)
 
-## Derek, is there a way to calculate the average poverty rate of the bottom 20 or so states in this dataframe when sorted by homicide rate and then calculate the average poverty rate of the top 20? Just eyeballing the dataframe, it looks as though there is a noticeably higher average poverty rate in the states with the highest homicide rates than the ones with the lowest.
+## We find that actually, St. Louis is the city where young people die at the highest rate, with 97 deaths per 100000 people. Baltimore, New Orleans and Birmingham follow, with Chicago at the fifth-highest rate. What is the average age of the people that are killed under the age of 21 in St. Louis? 
 
-#Question 4: Whicb ciy has the highest amount of open cases? 
+homicide_data_cleaned %>%
+  filter(city == "St. Louis", under_21 == "True") %>%
+  summarise(total_age = sum(victim_age)) %>%
+  summarise(total_age/309)
+
+## The average age is 17.39 years old. 
+
+
+#Question 5: Which city has the highest amount of open cases? 
 #first we should filter the data to see just our open cases 
 unsolved_homicides <- homicide_data %>%
   filter(disposition=="Open/No arrest") %>%
