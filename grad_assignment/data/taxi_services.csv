@@ -1,0 +1,5 @@
+project_county_name,naics_code,n,ap,est,full_fips,difference
+Maricopa,485310,1259,136849,25,04013,1234
+Pima,485310,122,142,3,04019,119
+Yavapai,485310,11,174,3,04025,8
+Mohave,485310,6,353,3,04015,3

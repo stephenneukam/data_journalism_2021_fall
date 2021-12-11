@@ -17,24 +17,528 @@ The deliverable will be this R Markdown notebook and a data folder that you will
 
 **Task** Create a codeblock and load appropriate packages and settings for this assignment.
 
+```{r}
+library(tidyverse)
+library(tidycensus)
+library(stringr)
+library(tigris)
+library(ggrepel)
+library(ggplot2)
+library(corrr)
+```
+
+
 ## Initial Exploration
 
 **Q1.**. Write R code that generates some basic descriptive statistics that allows you to describe the applications from your state. This code should produce results that describe the data in different ways: how many applications there are, along with ways to understand the typical and most frequent values for columns you find interesting or newsworthy. You should produce at least five (5) descriptive statistics and write up a summary of the data using them.
 
-**A1.** 
+```{r}
+az_ppp <- read_rds("data/az_ppp.rds")
+
+## First, to clean the data a bit
+
+az_ppp <- az_ppp %>%
+  mutate(zip5 = str_sub(zip, 1, 5)) %>%
+  mutate(project_county_name = str_to_title(project_county_name)) %>%
+  mutate(project_city = str_to_title(project_city))
+
+
+## How many loan applications are there?
+az_ppp %>%
+  group_by(id) %>%
+  count()
+
+## There are 173,598 unique loan applications in the data.
+
+## What counties have the highest number of loan applications?
+
+top_county_number <- az_ppp %>%
+  group_by(project_county_name) %>%
+  count() %>%
+  arrange(desc(n))
+
+## Maricopa County (where Phoenix is located) has the highest number of loans with 128108, followed by Pima and Pinal county. When running this, I found that there are results in this dataset from counties that are not in Arizona. Let's filter them out
+
+az_ppp <- az_ppp %>%
+  filter(!project_county_name == "Allegheny") %>%
+  filter(!project_county_name == "Hennepin") %>%
+  filter(!project_county_name == "Richland") %>%
+  filter(!project_county_name == "Seminole")
+
+## Let's double-check that those counties are out of the dataset
+top_county_number <- az_ppp %>%
+  group_by(project_county_name) %>%
+  count()
+
+## We can now update our total unique loan count, which is now 173574.
+
+## What industry received the highest number of loans? Which one received the highest total amount of loans?
+
+industry_highest_number <- az_ppp %>%
+  group_by(naics_code) %>%
+  count()
+
+industry_highest_amount <- az_ppp %>%
+  group_by(naics_code) %>%
+  summarise(total_amount = sum(amount)) %>%
+  arrange(desc(total_amount))
+
+## Beauty salons had the highest number of loans given to them in the state, while full-service restaurants had the highest total amount of loans given to them.
+
+## What banks or lenders were the most popular in the state? Were there any that dominated in lending in the state? 
+
+az_ppp %>%
+  group_by(lender) %>%
+  count %>%
+  arrange(desc(n))
+
+## JPMorgan Chase Bank had by almost 6000 the most number of loans serviced in the state. I am curious what this number looks like in the largest county that includes Phoenix and in more rural counties. Let's see what the breakdown is in Maricopa County:
+
+az_ppp %>%
+  filter(project_county_name == "Maricopa") %>%
+  group_by(lender) %>%
+  count() %>%
+  arrange(desc(n))
+
+## In Maricopa County, there were 12718 loans serviced by JPMorgan Chase, which is the most in the county. That means that 74% of the loans that it serviced in the state were in Maricopa County. Let's see the breakdown for all other counties:
+
+az_ppp %>%
+  filter(!project_county_name == "Maricopa") %>%
+  group_by(lender) %>%
+  count() %>%
+  arrange(desc(n))
+
+## Now, JPMorgan is second in all of the other counties. The lender with the most in all other counties is Zions Bank, which was 10th in Maricopa County and fifth overall. It is a Salt Lake City, Utah-based bank that offers banking services to companies in Utah and Idaho, according to its website. 
+
+## How many loans have undisbursed amounts in this data set? What industry has the most undisbursed loans?
+
+undisbursed_loans <- az_ppp %>%
+  filter(undisbursed_amount > 0)
+
+undisbursed_loans %>%
+  group_by(naics_code) %>%
+  count() %>%
+  arrange(desc(n))
+
+undisbursed_loans %>%
+  group_by(race) %>%
+  count() %>%
+  arrange(desc(n))
+## I found that there were 6758 loans with an undisbursed amount greater than 0. I also found that the most common industries with undisbursed loans was beauty salons and barber shops. This was followed by taxi services. 
+
+## I also wanted to see how common out-of-state lenders were in the dataset
+az_ppp <- az_ppp %>%
+  mutate(out_of_state_lender = case_when(servicing_lender_state == "AZ" ~ "False",
+                                         TRUE ~ "True"))
+az_ppp %>%
+  group_by(out_of_state_lender) %>%
+  count()
+## there were 21855 in-state lenders and 151719	out-of-state lenders
+
+## What were the most common businesses that in-state and out-of-state lenders serviced?
+az_ppp %>%
+  filter(out_of_state_lender == "False") %>%
+  group_by(naics_code) %>%
+  count() %>%
+  arrange(desc(n))
+
+az_ppp %>%
+  filter(out_of_state_lender == "True") %>%
+  group_by(naics_code) %>%
+  count() %>%
+  arrange(desc(n))
+
+## I didnt find anything particularly interesting. In-state lenders serviced a higher number of residential remodelers, but that was about it that stuck out.
+
+## Now how about the average loan amount for in-state and out-of-state lenders?
+az_ppp %>%
+  filter(out_of_state_lender == "False") %>%
+  summarise(mean(amount)) ## average is 69849.96
+
+az_ppp %>%
+  filter(out_of_state_lender == "True") %>%
+  summarise(mean(amount)) ## average is 72172.81
+
+## what counties used in-state and out-of-state lenders? I'm thinking smaller, more rural counties would use in-state lenders at a higher rate...
+out_state_lenders <- az_ppp %>%
+  group_by(project_county_name, out_of_state_lender) %>%
+  count()
+out_state_lenders <- out_state_lenders %>%
+  filter(out_of_state_lender == "False")
+
+county_loans <- az_ppp %>%
+  group_by(project_county_name) %>%
+  count() %>%
+  arrange(desc(n))
+
+out_state_lenders <- out_state_lenders %>%
+  left_join(county_loans, b=c("project_county_name")) %>%
+  mutate(out_of_state_loans = n.x, totals_loans = n.y)
+
+out_state_lenders <- out_state_lenders %>%
+  mutate(percent_out_of_state = (out_of_state_loans/totals_loans)*100)
+
+## in general, I found that smaller, more rural and remote counties with smaller populations were using in-state lenders at a considerably higher rate than places like Maricopa County. That made me wonder — if I filter out Maricopa County loans from the in-state data set, does the average amount for the loans plummet?
+non_maricopa <- az_ppp %>%
+  filter(!project_county_name == "Maricopa")
+
+non_maricopa %>%
+  filter(out_of_state_lender == "False") %>%
+  summarise(mean(amount)) ##74164.44
+
+## the average amount of the loans actually increased by around 5000.
+
+## Finally, I wanted to take a look at some of the jobs retained numbers. What was the average amount of jobs retained in this loan set?
+az_ppp %>%
+  summarise(mean(jobs_retained)) ## average was 9.121643
+
+## What was the highest number of jobs retained?
+az_ppp %>%
+  group_by(jobs_retained) %>%
+  count() %>%
+  arrange(desc(n)) ## the highest number of jobs retained was 499, by a company called Kind Hospitality
+
+az_ppp %>%
+  summarise(mean(amount)) ##71880.34	
+az_ppp %>%
+  filter(!project_county_name == "Maricopa") %>%
+  summarise(mean(amount)) ##66854.4
+
+## I was curious if there were any trends that are noteworthy in areas where there is a high amount of Native American population. I loaded in the population for American Indians and joined it with loan rates to see if there was a trend
+indian_pops <- get_acs(geography = "county",
+                       variables = c(population = "B02014_002"),
+                       state = "AZ")
+
+indian_pops <- indian_pops %>%
+  mutate(NAME = str_remove(NAME, " County, Arizona")) %>%
+  mutate(native_population = estimate)
+
+indian_pops <- indian_pops %>%
+  select(NAME, native_population)
+
+## loading in county populations
+county_pops_cleaned <- get_acs(geography = "county",
+                       variables = c(population = "B01001_001"),
+                       state = "AZ")
+
+## cleaning county population information
+county_pops_cleaned <- county_pops_cleaned %>%
+  mutate(NAME = str_remove_all(NAME, " County, Arizona"))
+
+county_pops_cleaned <- county_pops_cleaned %>%
+  select(NAME, estimate)
+
+indian_pops <- indian_pops %>%
+  left_join(county_pops_cleaned, by=c("NAME"))
+
+indian_pops <- indian_pops %>%
+  mutate(indian_percentage = (native_population/estimate)*100)
+
+county_loans_for_joining <- az_ppp %>%
+  group_by(project_county_name) %>%
+  count()
+
+indian_pops <- indian_pops %>%
+  left_join(county_loans_for_joining, by=c("NAME"="project_county_name"))
+
+indian_pops <- indian_pops %>%
+  mutate(loans_per100k = (n/estimate)*100000)
+
+indian_pops %>%
+  ggplot() +
+  geom_point(aes(x=indian_percentage,y=loans_per100k)) +
+  geom_smooth(aes(x=indian_percentage,y=loans_per100k), method="lm")
+
+cor.test(indian_pops$native_population, indian_pops$loans_per100k)
+
+undisbursed_loan_rate <- az_ppp %>%
+  filter(undisbursed_amount > 0) %>%
+  group_by(project_county_name) %>%
+  count()
+
+undisbursed_loan_rate <- undisbursed_loan_rate %>%
+  mutate(undisbursed_loans = n)
+
+undisbursed_loan_rate <- undisbursed_loan_rate %>%
+  select(project_county_name, undisbursed_loans)
+
+indian_pops <- indian_pops %>%
+  left_join(undisbursed_loan_rate, by=c("NAME"="project_county_name"))
+
+indian_pops <- indian_pops %>%
+  mutate(undisbursed_rate = (undisbursed_loans/n)*100)
+
+indian_pops %>%
+  ggplot() +
+  geom_point(aes(x=indian_percentage,y=undisbursed_rate)) +
+  geom_smooth(aes(x=indian_percentage,y=undisbursed_rate), method="lm")
+
+## There didn't seem to be any significant correlation between Native population and loan rates and undisbursed loan rates in Arizona.
+```
+
+
+**A1.**  The Arizona PPP dataset has 173574 unique loan applications, which I had to do some cleaning to get the most accurate number. Maricopa County, which is where Phoenix is, had the most applications in the data, followed by Pima County (where Tucson is) and Pinal County. Beauty salons had the highest number of loans given to them in the state, while full-service restaurants had the highest total amount of loans given to them. JPMorgan Chase had the highest number of loans serviced in the state. However, a majority of those loans were concentrated in Maricopa County, with 74% of the bank's loans in the Phoenix area. Outside of Maricopa County, the bank with the most loans is Zions Bank. It is a Salt Lake City, Utah-based bank that offers banking services to companies in Utah and Idaho, according to its website. I then began to wonder what the breakdown of out-of-state and in-state lenders was. I found that there were 21855 in-state lenders and 151719	out-of-state lenders. In-state and out-of-state lenders did not seem to have any identifiable trends in the industries they made loans to. However, I did find that smaller, more rural counties used in-state lenders more frequently than counties with larger urban areas. For example, La Paz County, a small county on the western border, used in-state lenders for 35% of their applications. Maricopa County used them for just 12% of their loans. I found that there was about a $2000 difference between the average amount from out-of-state lenders and in-state lenders. Finally, I found that the average number of jobs retained in the dataset was just over 9. 
 
 
 ## Geographic Analysis
 
 **Q2.** Write R code that examines geographic patterns for PPP loans in your state, using Census population information to calculate a per-capita figure for the state and counties and zip codes. Then, make a county map using ggplot showing the per-capita data and a zip code map showing the difference from the statewide per-capita figure. Describe the most interesting or newsworthy findings based on your exploration.
 
-**A2.** 
+```{r}
+## loading in state pops
+state_pops <- get_acs(geography = "state",
+                       variables = c(population = "B01001_001"),
+                       state = "AZ",
+                       geometry = TRUE)
+## Changing state names from abbreviation in az_ppp
+az_ppp <- az_ppp %>%
+  mutate(project_state = case_when(project_state == "AZ" ~ "Arizona"))
+
+## creating data set for state total loans
+state_loans <- az_ppp %>%
+  group_by(project_state) %>%
+  count()
+
+## joining the two sets
+state_totals <- state_loans %>%
+  inner_join(state_pops, b=c("project_state"="NAME"))
+
+## creating column for per100k loans in state
+state_totals <- state_totals %>%
+  mutate(per100k = (n/estimate)*100000)
+
+## loading in county populations
+county_pops <- get_acs(geography = "county",
+                       variables = c(population = "B01001_001"),
+                       state = "AZ",
+                       geometry = TRUE)
+
+## cleaning county population information
+county_pops <- county_pops %>%
+  mutate(NAME = str_remove_all(NAME, " County, Arizona"))
+
+## making county loan totals
+county_loans <- az_ppp %>%
+  group_by(project_county_name) %>%
+  count() %>%
+  arrange(desc(n))
+
+## joining the datasets
+county_totals <- county_loans %>%
+  left_join(county_pops, by=c("project_county_name" = "NAME"))
+
+## now creating a new column that shows the per 100k amount of loans for each county
+county_totals <- county_totals %>%
+  mutate(per_100k = (n/estimate)*100000)
+
+## creating the map that shows the county-level per100k data
+ggplot() + 
+  geom_sf(data=county_totals$geometry, aes(fill=county_totals$per_100k)) + 
+  theme_minimal() +
+  scale_fill_viridis_b(option="magma",trans = "log")
+
+## loading in zcta data
+zip_pops <- get_acs(geography = "zcta",
+                       variables = c(population = "B01001_001"),
+                       state = "AZ",
+                       geometry = TRUE)
+
+## making zip code loan totals
+zip_loans <- az_ppp %>%
+  group_by(zip5) %>%
+  count() %>%
+  arrange(desc(n))
+
+## joining the datasets
+zip_totals <- zip_pops %>%
+  inner_join(zip_loans, by=c("GEOID"="zip5"))
+
+## creating column for per100k loans
+zip_totals <- zip_totals %>%
+  mutate(per100k = (n/estimate)*100000)
+
+## creating a column in zip totals that is populated with the per100k statewide to calculate the difference for each zcta:
+zip_totals <- zip_totals %>%
+  mutate(state_per100k = 2461.938)
+
+## creating a column in zip totals that shows the difference between each zcta per100k and the state-wide per100k
+zip_totals <- zip_totals %>%
+  mutate(difference_from_state = (per100k-state_per100k)) %>%
+  filter(!difference_from_state == Inf)
+
+
+## creating the map that shows zcta-level per100k data
+ggplot() + 
+  geom_sf(data=zip_totals, aes(fill=difference_from_state)) + 
+  theme_minimal() +
+  scale_fill_viridis_b(option="magma",trans = "log")
+
+## creating a map to see where the most populous areas are in the state
+ggplot() + 
+  geom_sf(data=county_pops$geometry, aes(fill=county_pops$estimate)) + 
+  theme_minimal() +
+  scale_fill_viridis_b(option="magma",trans = "log")
+
+```
+
+
+**A2.** I thought that the most newsworthy finding in my analysis was that counties and zctas in and around the Phoenix area had by far a higher rate of loans and outpaced the statewide per100k number as well. Rural and desert counties in the east and west of the state lagged behind in the rate of loans. I also found it odd that Pima County, which is home to Tuscon and has the second-highest population in the state, had around the same rate of loans as some smaller counties and was not on par with areas around Phoenix.
 
 ## Lender Analysis
 
 **Q3.** Write R code to examine which lenders had the most approved applications in your state (and include summary statistics such as total amount and average loan amount). Generate dataframes that show the number and total amount of all loans and undisbursed loans per lender. For those lenders who had any undisbursed loans, make a graphic showing the relationship between the total amount of loans and the total undisbursed amount. Describe the most noticeable outlier lenders on that graphic below.
 
-**A3.** 
+```{r}
+## finding the top lenders in the state
+top_lenders <- az_ppp %>%
+  group_by(lender) %>%
+  count() %>%
+  arrange(desc(n))
+## The top lenders in the state were JPMorgan Chase, Bank of America and Wells Fargo. We'll also include Prestamos CDFI, LLC, which is a state-based bank.
+
+## finding the total amount for each of these top four banks
+top_lenders <- az_ppp %>%
+  filter(lender == "Bank of America, National Association" | lender == "JPMorgan Chase Bank, National Association" | lender == "Wells Fargo Bank, National Association" | lender == "Prestamos CDFI, LLC")
+
+total_amount_lenders <- top_lenders %>%
+  group_by(lender) %>%
+  summarise(total = sum(amount))
+
+## Total amount for the top lenders — 
+## JPMorgan Chase Bank, National Association: 1647905487
+## Bank of America, National Association: 674479598
+## Wells Fargo Bank, National Association: 554801097
+## Prestamos CDFI, LLC: 166121135
+
+## finding the average amount for each top lender
+
+average_amount <- top_lenders %>%
+  group_by(lender) %>%
+  summarise(avg_amount = mean(amount))
+
+## Average loan amount for the top lenders -
+## JPMorgan Chase Bank, National Association, 96155.06
+## Bank of America, National Association, 57637.98
+## Wells Fargo Bank, National Association, 51976.87
+## Prestamos CDFI, LLC, 16079.87
+
+## creating a dataframe that shows the total number of loans for each lender
+total_number <- az_ppp %>%
+  group_by(lender) %>%
+  count() %>%
+  arrange(desc(n))
+
+## creating a dataframe that shows the total amount of loans for each lender
+total_amount <- az_ppp %>%
+  group_by(lender) %>%
+  summarise(total = sum(amount)) %>%
+  arrange(desc(total))
+
+## creating a dataframe that shows the total number of lenders with undisbursed loans
+undisbursed_number <- az_ppp %>%
+  filter(undisbursed_amount > 0) %>%
+  group_by(lender) %>%
+  count()
+
+undisbursed_amount <- az_ppp %>%
+  filter(undisbursed_amount > 0) %>%
+  group_by(lender) %>%
+  summarise(total = sum(undisbursed_amount))
+
+undisbursed_joined <- undisbursed_amount %>%
+  inner_join(undisbursed_total, by=c("lender"))
+
+## creating graphic that shows the relationship between the number of undisbursed loans and the total amount
+
+undisbursed_joined %>%
+  ggplot() +
+  geom_point(aes(x=n,y=total)) +
+  geom_smooth(aes(x=n,y=total), method="lm") +
+  geom_label_repel(aes(x=n, y=total, label=lender))
+
+## Is there anything strikingly different about lenders like BSD Capital and Capital Plus Financial that made them have a much, much higher amount of undisbursed loans?
+
+az_ppp %>%
+  filter(lender == "BSD Capital, LLC dba Lendistry", undisbursed_amount > 0) %>%
+  group_by(project_county_name) %>%
+  count() %>%
+  arrange(desc(n))
+
+az_ppp %>%
+  filter(lender == "Capital Plus Financial, LLC", undisbursed_amount > 0) %>%
+  group_by(project_county_name) %>%
+  count() %>%
+  arrange(desc(n))
+
+az_ppp %>%
+  filter(lender == "BSD Capital, LLC dba Lendistry", undisbursed_amount > 0) %>%
+  group_by(naics_code) %>%
+  count() %>%
+  arrange(desc(n))
+
+az_ppp %>%
+  filter(lender == "Capital Plus Financial, LLC", undisbursed_amount > 0) %>%
+  group_by(naics_code) %>%
+  count() %>%
+  arrange(desc(n))
+
+az_ppp %>%
+  filter(lender == "BSD Capital, LLC dba Lendistry", undisbursed_amount > 0) %>%
+  summarise(mean(amount)) ##18600
+
+az_ppp %>%
+  filter(lender == "Capital Plus Financial, LLC", undisbursed_amount > 0) %>%
+  summarise(mean(amount)) ##16412.5	
+
+az_ppp %>%
+  filter(undisbursed_amount > 0) %>%
+  summarise(mean(amount)) ##71880.34	
+
+## I didn't find anything that really stood out about those two lenders compared to the larger data set. The only thing that stood out was that the average loan amount of loans with undisbursed amounts for both of the lenders was significantly less than average loan amount in the larger data set.
+
+## I wanted to quickly look if there was a higher rate of undisbursed loans in rural areas than in urban areas:
+urban_ppp <- az_ppp %>%
+  filter(project_county_name == "Maricopa" | project_county_name == "Pima")
+
+urban_undisbursed <- urban_ppp %>%
+  group_by(project_county_name) %>%
+  filter(undisbursed_amount > 0) %>%
+  count()
+
+urban_ppp <- urban_ppp %>%
+  group_by(project_county_name) %>%
+  count()
+
+urban_joined <- urban_undisbursed %>%
+  left_join(urban_ppp, b=c("project_county_name"))
+
+urban_joined <- urban_joined %>%
+  mutate(undisbursed_rate = (n.x/n.y)*100)
+
+rural_ppp <- az_ppp %>%
+  filter(!project_county_name == "Maricopa" | !project_county_name == "Pima")
+
+rural_undisbursed <-rural_ppp %>%
+  group_by(project_county_name) %>%
+  filter(undisbursed_amount > 0) %>%
+  count()
+
+rural_ppp <- rural_ppp %>%
+  group_by(project_county_name) %>%
+  count()
+
+rural_joined <- rural_undisbursed %>%
+  left_join(rural_ppp, b=c("project_county_name"))
+
+rural_joined <- rural_joined %>%
+  mutate(undisbursed_rate = (n.x/n.y)*100)
+
+## not much of a difference between the rural and urban counties in the rate of undibisbursed loans.
+  
+```
+
+
+**A3.** There did not seem to be any significant outliers in the scatterplot that I created to show the relationship between the number of loans with undisbursed amounts and the total undisbursed amount for each lender. There also did not seem to be anything the stood out about the lenders that did have a high number of undisbursed loans.
 
 
 ## Industry Analysis
@@ -45,10 +549,130 @@ Does the distribution of PPP applications by the top 10 industries (by number of
 
 Create a county-level map showing the differences between the PPP applications and the Census business data for one of the top 10 industry codes. You can do this either using ggplot or Datawrapper (if the latter, publish that map and include the URL below).
 
-**A4.** 
+```{r}
+## creating statewide naics totals
+state_naics_totals <- az_ppp %>%
+  group_by(naics_code) %>%
+  count() %>%
+  arrange(desc(n))
+
+## creating countywide naics totals
+county_naics_totals <- az_ppp %>%
+  group_by(project_county_name, naics_code) %>%
+  count() %>%
+  arrange(desc(n))
+
+## loading in national naics code totals 
+national_naics_totals <- read_csv("data/cbp19co.txt")
+
+## creating full fips column in naics totals
+national_naics_totals$full_fips <- paste(national_naics_totals$fipstate, national_naics_totals$fipscty)
+
+national_naics_totals <- national_naics_totals %>%
+  mutate(full_fips = str_remove_all(full_fips, " "))
+
+national_naics_totals <- national_naics_totals %>%
+  filter(fipstate == "04")
+
+## loading in fips codes to match to the countywide and statewide data
+fips_codes <- fips_codes
+
+## adding state code fips column to statewide data, populating it with "04", the code for Arizona.
+state_naics_totals <- state_naics_totals %>%
+  mutate(state_code = "04")
+
+## taking away "county" from the fips codes to join with the county data
+fips_codes <- fips_codes %>%
+  mutate(county = str_remove_all(county, " County"))
+
+## filtering the fips codes down to just AZ
+fips_codes <- fips_codes %>%
+  filter(state == "AZ")
+
+## adding in fips codes to the county level data
+county_naics_totals <- county_naics_totals %>%
+  left_join(fips_codes, by=c("project_county_name"="county"))
+
+## creating full fips column in county level data
+county_naics_totals$full_fips <- paste(county_naics_totals$state_code, county_naics_totals$county_code)
+
+county_naics_totals <- county_naics_totals %>%
+  mutate(full_fips = str_remove_all(full_fips, " "))
+
+## changing naics code column to character
+county_naics_totals <- county_naics_totals %>%
+  mutate(naics_code = as.character(naics_code))
+  
+
+## joining the county naics totals and national naics totals
+county_national_naics_joined <- county_naics_totals %>%
+  inner_join(national_naics_totals, b=c("full_fips", "naics_code"="naics"))
+
+
+## changing state naics to character
+state_naics_totals <- state_naics_totals %>%
+  mutate(naics_code = as.character(naics_code))
+
+## joining the statewide and national naics totals
+state_national_naics_joined <- state_naics_totals %>%
+  inner_join(national_naics_totals, by=c("naics_code"="naics"))
+
+## slimming down the county_national to essential columns
+county_national_naics_joined <- county_national_naics_joined %>%
+  select(project_county_name, naics_code, n, ap, est)
+
+## making a column that shows the difference between the census data and the ppp applications
+county_national_naics_joined <- county_national_naics_joined %>%
+  mutate(difference = n-est)
+
+az_ppp %>%
+  group_by(business_type) %>%
+  count()
+
+## filtering out sole proprietorships and self-employeed businesses from the county-level data
+county_naics_totals_filtered <- az_ppp %>%
+  filter(!business_type == "Self-Employed Individuals", !business_type == "Sole Proprietorship") %>%
+  group_by(project_county_name, naics_code) %>%
+  count() %>%
+  arrange(desc(n))
+
+county_naics_totals_filtered <- county_naics_totals_filtered %>%
+  left_join(fips_codes, by=c("project_county_name"="county"))
+
+county_naics_totals_filtered$full_fips <- paste(county_naics_totals_filtered$state_code, county_naics_totals_filtered$county_code)
+
+county_naics_totals_filtered <- county_naics_totals_filtered %>%
+  mutate(full_fips = str_remove_all(full_fips, " "))
+
+county_naics_totals_filtered <- county_naics_totals_filtered %>%
+  mutate(naics_code = as.character(naics_code))
+
+county_national_naics_joined_filtered <- county_naics_totals_filtered %>%
+  inner_join(national_naics_totals, b=c("full_fips", "naics_code"="naics"))
+
+## slimming down the county_national_filtered to essential columns
+county_national_naics_joined_filtered <- county_national_naics_joined_filtered %>%
+  select(project_county_name, naics_code, n, ap, est, full_fips)
+
+## making a column that shows the difference between the census data and the ppp applications for the filtered dataset
+county_national_naics_joined_filtered <- county_national_naics_joined_filtered %>%
+  mutate(difference = n-est)
+
+## filtering just for Taxi services in the dataset for the datawrapper map
+taxi_services <- county_national_naics_joined_filtered %>%
+  filter(naics_code == "485310")
+
+## writing csv for taxi service map
+write_csv(taxi_services, "data/taxi_services.csv")
+```
+
+
+**A4.** Before eliminating sole proprietorships and self-employed individuals from the data set, there were significant differences between the reported ppp applications and the number of reported establishments in the county from the Census data. In some cases, like for beauty salons in Maricopa County, there were 4727 more ppp applications than the reported number of establishments in 2019. When I filtered out both sole proprietorships and self-employed individuals, the discrepancies certainly decreased — in some cases by thousands. However, there are still significant differences between the applications and the number of reported establishments. In general, I found that there were the largest differences in Maricopa County, which houses Phoenix. Many of the industries have differences above 400. One of the most striking differences is that there are 25 reported Taxi services in Maricopa County, and there were 1259 ppp applications from that industry in Maricopa County, after filtering out self-employeed individuals and sole proprietorships. Before the filter, there were 2326. I also noticed that there was a large difference in the amount of physicians that are reported in the Census data and the amount of PPP applications filed by physicians. In every single county, there were less applications than the reported establishments.
+
+Map link: https://datawrapper.dwcdn.net/G1zql/1/
 
 ## Summary
 
 **Q5.** What is the most promising story idea that you have found during this exploration? How would you approach reporting it out and what other information/data would you need to do that? What would be the minimum story you could get from this, and what would be the maximum story?
 
-**A5.**
+**A5.** I think that the most compelling story idea that I found during this exploration is the number of disparities between rural and urban areas in the dataset. Most prominently, I think the disparity in the high rate of loan applications from urban areas around Phoenix and the lower rate of loan applications in rural areas is striking. I also think the fact that businesses in this area relied on local, in-state bankers and lenders at higher rates is interesting. I would approach this by speaking with business owners in the rural areas and try to gauge their experience with the PPP program. I would also want to speak with local and state bankers, to see how their institutions were able to interact with the government at the state and federal level for the funding. The minimum story I could get out of this is a story about how businesses in rural areas of the state did not apply for loans at the same rate as businesses around Phoenix and Tucson. The maximum story I could get out of this is one that depicts a systematic disadvantage for smaller, more rural businesses in securing loans. This could be for any number of reasons, including having to rely on local bankers which have less experience with these types of federal programs or a general lack of understanding or outreach about the relief program in these parts of the state. 

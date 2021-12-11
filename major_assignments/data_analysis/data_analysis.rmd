@@ -12,31 +12,44 @@ library(tidycensus)
 library(janitor)
 library(tigris)
 library(naniar)
-library(readxl)
 library(rvest)
 library(corrr)
+```
+Consistently ranking within the top cities in the United States for homicide rates, Baltimore has risen to over 300 homicides in 2021 alone. As the police department and residents are eager to find answers as to why Baltimore homicides continue to remain steady, underlying factors such as poverty rate, education, the size of police budgets and policing effectiveness are potentially contributing to the problem.
 
-## Loading in homicide data
+Through our data analysis, we pulled in datasets regarding police budgets, poverty rates and education to get a sense of how the variables were connected to homicide rates nationwide in the top U.S. cities. When looking at these variables, we acknowledged that there were certain ways in which we wished we could quantify the data but were inaccessible to us. 
 
+We found that a number of variables had a strong correlation with homicide rates. Namely, we found that there was a very strong correlation between homicide rates and areas with high levels of unemployment. We also found that there was a positive correlation between homicide rates and higher levels of poverty. We were able to see that in Baltimore specifically, these trends were generally present as well. We found that while it has the second-highest homicide rate out of all the examined cities, it also had the third-highest rate of unsolved homicides and the 18th-highest poverty rate. We also tested other variables and found that there were not that strong of correlations. 
+
+Loading in homicide data
+
+```{r}
 homicide_data <- read_csv("data/homicide-data.csv")
+```
 
-## As Baltimore crosses the 300 mark for homicides this year, a flood of explanations for the murders have emerged. Finger pointing in the city and state has continued, with different actors and departments assigning blame to different areas. Some in the city contend that the police do not have enough resources to combat the violence. Some, like Mayor Brandon Scott, argue that the violence stems from underlying factors, like years and years of poverty and a lack of funding for education. To test these arguments, we aggregated data points for a number of variables to see whether there was a statistical correlation between them and homicides across the nation. Through our data analysis, we pulled in datasets regarding police budgets, poverty rates and education in regards to the Baltimore area.
+As Baltimore crosses the 300 mark for homicides this year, a flood of explanations for the murders have emerged. Finger pointing in the city and state has continued, with different actors and departments assigning blame to different areas. Some in the city contend that the police do not have enough resources to combat the violence. Some, like Mayor Brandon Scott, argue that the violence stems from underlying factors, like years and years of poverty and a lack of funding for education. To test these arguments, we aggregated data points for a number of variables to see whether there was a statistical correlation between them and homicides across the nation. Through our data analysis, we pulled in datasets regarding police budgets, poverty rates and education in regards to the Baltimore area. All datasets were pulled from verified government websites, allowing our analysis to maintain accuracy, as we attempted to minimize the margin of error that can occur during data analysis. 
 
 
-## Before getting started, we need to clean the homicide data a bit. Let's do that first:
+Before getting started, we need to clean the homicide data a bit. Let's do that first:
 
-## The age column is a character, but to work with the age of those killed, it has to be a dbl. For this, we have to first make all "Unknown" entries into N/A so that we can make this change
+The age column is a character, but to work with the age of those killed, it has to be a dbl. For this, we have to first make all "Unknown" entries into N/A so that we can make this change
 
+```{r}
 homicide_data_cleaned <- homicide_data %>%
   mutate(victim_age = na_if(victim_age, "Unknown"))
 
-## Changing column to numeric
+```
 
+Changing column to numeric
+
+```{r}
 homicide_data_cleaned <- homicide_data_cleaned %>%
   mutate(victim_age = as.numeric(victim_age))
+```
 
-## We also need to load in homicide data
+We also need to load in homicide data
 
+```{r}
 pop_url <- "https://ballotpedia.org/Largest_cities_in_the_United_States_by_population"
 
 city_pop <- pop_url %>%
@@ -44,15 +57,19 @@ city_pop <- pop_url %>%
   html_table()
 
 city_pop <- city_pop[[2]]
+```
 
-## Writing it as a csv so we can load it back in and skip the first row.
+Writing it as a csv so we can load it back in and skip the first row.
 
+```{r}
 write_csv(city_pop, "data/city_pops.csv")
 
 city_pop <- read_csv("data/city_pops.csv", skip = 1)
+```
 
-## This dataset is a bit messy. We are going to clean it up, giving it correct column names and only grabbing the columns we need.
+This dataset is a bit messy. We are going to clean it up, giving it correct column names and only grabbing the columns we need.
 
+```{r}
 city_pop <- city_pop %>%
   mutate(population = `Population (2013)`) %>%
   select(City, population) %>%
@@ -60,26 +77,32 @@ city_pop <- city_pop %>%
 
 city_pop <- city_pop %>%
   select(City, population)
+```
 
-## This dataframe is missing population numbers for Savannah and Washington. We will input those number manually.
+This dataframe is missing population numbers for Savannah and Washington. We will input those number manually.
 
+```{r}
 city_pop <- city_pop %>%
   add_row(City = "Savannah", population = 145403) %>%
   add_row(City = "Washington", population = 692683)
+```
 
-## Now we are going to join the population data into the homicide data
+Now we are going to join the population data into the homicide data
 
+```{r}
 homicide_data_cleaned <- homicide_data_cleaned %>%
   inner_join(city_pop, by=c("city" = "City"))
 
 homicide_data_cleaned %>%
   group_by(city) %>%
   count()
+```
 
-## One of the questions we wanted to look at was how the size of police budgets affects the homicide rate in cities. In 2020, Baltimore had the ninth overall largest police budget out of U.S. cities and the highest money spent per resident. In Baltimore alone, this would suggest that there was no correlation between a high police budget and the murder rate. However, if parsed out nationally, do we see a trend between murders and the size of police budgets? Does this suggest this could be an underlying factor? Let's see what the data suggests:
+One of the questions we wanted to look at was how the size of police budgets affects the homicide rate in cities. In 2020, Baltimore had the ninth overall largest police budget out of U.S. cities and the highest money spent per resident. In Baltimore alone, this would suggest that there was no correlation between a high police budget and the murder rate. However, if parsed out nationally, do we see a trend between murders and the size of police budgets? Does this suggest this could be an underlying factor? Let's see what the data suggests:
 
-## Loading in police budget data
+Loading in police budget data
 
+```{r}
 budget_url <- "https://storage.googleapis.com/vera-web-assets/data/datasets/City-PD_HoverStats-12-2-2020-2.csv"
 
 budget <- read.csv(budget_url)
@@ -107,13 +130,15 @@ homicide_budget %>%
   geom_smooth(aes(x=City...per.resident.for.police,y=homicide_rate), method="lm")
 
 cor.test(homicide_budget$City...per.resident.for.police, homicide_budget$homicide_rate) 
+```
 
-## The statistics suggest that as police budget spending per city resident increases, so do homicide rates. The statistical significance of this analysis, however, makes us a bit skeptical that it is something we could report. The cor.test shows a p-value of .04728 and the r is .3283. We also considered that police budget spending may not be the most effective way to gauge whether policing in the cities makes a difference. For example, in Baltimore, there is consistent conversation over what some people see as aggressive or not aggressive enough policing tactics in the city. There is also argument over how the city prosecutes crimes, and whether that contributes to keeping violent offenders on the streets. However, this is data that we thought would be hard to quantify. But this type of analysis might be more instructive. For example, if we could come up with a data set that shows which cities prosecute low-level drug offenders vs. those that don't, we might be able to find more telling correlations.
+The statistics suggest that as police budget spending per city resident increases, so do homicide rates. The statistical significance of this analysis, however, makes us a bit skeptical that it is something we could report. The cor.test shows a p-value of .04728 and the r is .3283. We also considered that police budget spending may not be the most effective way to gauge whether policing in the cities makes a difference. For example, in Baltimore, there is consistent conversation over what some people see as aggressive or not aggressive enough policing tactics in the city. There is also an argument over how the city prosecutes crimes, and whether that contributes to keeping violent offenders on the streets. However, this is data that we thought would be hard to quantify. But this type of analysis might be more instructive. For example, if we could come up with a data set that shows which cities prosecute low-level drug offenders vs. those that don't, we might be able to find more telling correlations.
 
-## One of the other data points that we wanted to test homicide rates against was poverty rates. People like Mayor Scott have argued that underlying issues, such as poverty, have contributed to the rising homicide rates. Is there a connection between cities with higher poverty rates and higher homicide rates? We loaded in Census API data for each city. It shows the percent of population living 100 percent below the poverty line. Here's how we did that:
+One of the other data points that we wanted to test homicide rates against was poverty rates. People like Mayor Scott have argued that underlying issues, such as poverty, have contributed to the rising homicide rates. Is there a connection between cities with higher poverty rates and higher homicide rates? We loaded in Census API data for each city. It shows the percent of population living 100 percent below the poverty line. Here's how we did that:
 
-## We have to first load in income data for each city/
+We have to first load in income data for each city
 
+```{r}
 acs5 <- load_variables(2019, "acs5", cache = TRUE)
 
 below_poverty_level <- get_acs(geography = "place",
@@ -132,19 +157,25 @@ below_poverty_level_cleaned <- below_poverty_level_cleaned %>%
 
 below_poverty_level_cleaned <- below_poverty_level_cleaned %>%
   select(City, State, pop_below_poverty_line)
+```
 
-## Now we have to join the poverty data to the homicide and population data
+Now we have to join the poverty data to the homicide and population data
 
+```{r}
 homicide_poverty <- homicide_data_cleaned %>%
   left_join(below_poverty_level_cleaned, by=c("city"="City", "state"="State"))
+```
 
-## Now we are going to calculate the percent of population in each city that is under 100% of the poverty line
+Now we are going to calculate the percent of population in each city that is under 100% of the poverty line
 
+```{r}
 homicide_poverty <- homicide_poverty %>%
   mutate(percent_poverty = (pop_below_poverty_line/population)*100)
+```
 
-## Now lets find the homicide rate for each city and rank which cities have the highest homicide rates (per 100000 people). We should be able to see if there is any correlation between poverty rate and homicide rate.
+Now let’s find the homicide rate for each city and rank which cities have the highest homicide rates (per 100000 people). We should be able to see if there is any correlation between poverty rate and homicide rate.
 
+```{r}
 homicide_poverty <- homicide_poverty %>%
   select(city, population, percent_poverty) %>%
   group_by(city, population, percent_poverty) %>%
@@ -177,15 +208,52 @@ homicide_poverty %>%
   geom_smooth(aes(x=percent_poverty,y=homicide_rate), method="lm")
 
 cor.test(homicide_poverty$percent_poverty, homicide_poverty$homicide_rate) ## good correlation
+```
 
-## The statistical tests suggest that there is a pretty good positive correlation between poverty rates and homicide rates. In general, as poverty rates increase, so do homicide rates. We would feel comfortable reporting this finding because the p-value of the two data points is .00065 and the r is .489. In this way, Baltimore is not unique from other cities with high homicide rates. However, we found that while Baltimore was in the top half of the cities in poverty rates, it sat relatively low in that half — it had the 18th-highest poverty rate but the second-highest murder rate. We acknowledge, though, that quantifying poverty in this manner is super broad. We also know that there are additional underlying issues that contribute to poverty. We tried to evaluate some of those more specific factors. One of those that we identified was education spending. We used a random sample of the top 50 cities and their per pupil spending on public education. We paired that with the homicide rates for each city to see if there was any correlation. Here's how we did that:
+The statistical tests suggest that there is a pretty good positive correlation between poverty rates and homicide rates. In general, as poverty rates increase, so do homicide rates. We would feel comfortable reporting this finding because the p-value of the two data points is .00065 and the r is .489. In this way, Baltimore is not unique from other cities with high homicide rates. Just to visualize the correlation, we wanted to plot 2017 homicides over Census tract data that showed the number of people in poverty. The map makes clear that the homicides are mostly concentrated in areas with higher numbers of poverty. If we had more time, we could reproduce this type of map with data from other cities to verify that this trend is relatively consistent.
 
-## Loading in education data
+```{r}
+counties <- counties()
 
+md_counties <- counties %>%
+  filter(STATEFP == "24") %>%
+  filter(NAMELSAD == "Baltimore city")
+
+below_poverty_level_tract <- get_acs(geography = "tract",
+                               variables = "B06012_002",
+                               state = "MD",
+                               geometry = TRUE,
+                               cache = TRUE)
+
+below_poverty_level_tract <- below_poverty_level_tract %>%
+  filter(str_detect(NAME, "Baltimore city"))
+
+below_poverty_level_tract <- below_poverty_level_tract %>%
+  select(GEOID, NAME, estimate, geometry)
+
+balitmore_homicides <- homicide_data_cleaned %>%
+  filter(city == "Baltimore") %>%
+  filter(str_detect(reported_date, "2017"))
+
+ggplot() + 
+  geom_sf(data=md_counties) +
+  geom_sf(data=below_poverty_level_tract, aes(fill = estimate)) +
+  geom_point(data=balitmore_homicides, aes(lon, lat)) +
+  theme_minimal() +
+  scale_fill_viridis_b(option="magma",trans = "log")
+```
+
+However, we found that while Baltimore was in the top half of the cities in poverty rates, it sat relatively low in that half — it had the 18th-highest poverty rate but the second-highest murder rate. We acknowledge, though, that quantifying poverty in this manner is super broad. We also know that there are additional underlying issues that contribute to poverty. We tried to evaluate some of those more specific factors. One of those that we identified was education spending. We used a random sample of the top 50 cities and their per pupil spending on public education. We paired that with the homicide rates for each city to see if there was any correlation. Here’s how we looked at the potential correlation between education spending and homicide rates:
+
+Loading in education data
+
+```{r}
 ed_spending <- read.csv("data/ed_spending.csv")
+```
 
-## cleaning ed data
+Cleaning education data
 
+```{r}
 ed_spending <- ed_spending %>%
   slice(-6,-15, -18, -22,-27) %>%
   mutate(Per_pupil_spending = as.numeric(Per_pupil_spending))
@@ -210,40 +278,151 @@ homicide_education %>%
   geom_smooth(aes(x=Per_pupil_spending,y=homicide_rate), method="lm")
 
 cor.test(homicide_education$Per_pupil_spending, homicide_education$homicide_rate) ## no correlation
+```
 
-## The data shows that there was not correlation between per pupil spending and homicide rates. For what it is worth, Baltimore had the fifth-highest per pupil spending of the 24 cities we evaluated. This data is insignificant and not something that we would include in our reporting — or perhaps mention that we found no connection between the two. We also know that maybe there are more precise variables that might be better to evaluate — like how exactly public education funds are allotted.
+The data shows that there was no correlation between per pupil spending and homicide rates. For what it is worth, Baltimore had the fifth-highest per pupil spending of the 24 cities we evaluated. This data is insignificant and not something that we would include in our reporting — or perhaps mention that we found no connection between the two. We also know that maybe there are more precise variables that might be better to evaluate — like how exactly public education funds are allotted. The statistical tests we conducted throughout verified our data analysis in confirming whether our analysis lacked or had significance, beyond our own personal hypotheses.
+
+To test other variables, we wanted to see if there was any significance between unemployment and high homicide rates nationwide. We pulled in unemployment data from the ACS, cleaned it and joined it with our homicide data to calculate the potential statistical correlation between unemployment and homicide rates.
+
+Running unemployment data
+
+```{r}
+unemployment_totals <- below_poverty_level <- get_acs(geography = "place",
+                               variables = "B27011_008",
+                               cache = TRUE)
+unemployment_totals_cleaned <- unemployment_totals %>%
+  select(NAME, estimate) %>%
+  separate(NAME, into = c("City","State"), sep = ", ")
+
+unemployment_totals_cleaned <- unemployment_totals_cleaned %>%
+  select(City, estimate, State) %>%
+  mutate(City = str_remove_all(City, " city")) %>%
+  mutate(unemployed = estimate) %>%
+  mutate(State = state.abb[match(unemployment_totals_cleaned$State, state.name)])
+
+unemployment_totals_cleaned <- unemployment_totals_cleaned %>%
+  select(City, State, unemployed)
+
+unemployed_homicide_joined <- homicide_data_cleaned %>%
+  left_join(unemployment_totals_cleaned, by=c("city"="City", "state"="State"))
+
+unemployed_homicide_joined <- unemployed_homicide_joined %>%
+  select(city, population, unemployed) %>%
+  group_by(city, population, unemployed) %>%
+  count()
+
+unemployed_homicide_joined <- unemployed_homicide_joined %>%
+  mutate(homicide_rate = (n/population)*100000) %>%
+  mutate(unemployment_rate =(n/unemployed)*100000)
+
+unemployed_homicide_joined %>%
+  ggplot() +
+  geom_point(aes(x=homicide_rate,y=unemployment_rate)) +
+  geom_smooth(aes(x=homicide_rate,y=unemployment_rate), method="lm")
+
+cor.test(unemployed_homicide_joined$homicide_rate, unemployed_homicide_joined$unemployment_rate)
+```
+
+There is a very very strong positive correlation between unemployment rates and homicide rates, in the cities we initially filtered for our analysis. In relation to our focus on underlying factors to high homicide rates, a lack of income is correlated to a higher homicide rate in that city. If we look at our previous analysis, this correlation makes sense when we look at the positive correlation between homicide and poverty rate. Those who are unemployed are likely falling into the poverty threshold as well. 
+
+Another piece of information that we found interesting was our analysis surrounding open cases. While we thought this may be a less compelling narrative, there could be a correlation here that is still worth exploring. Do cities that have lower homicide rates have more cases solved? In other words, does the number of solved/closed cases mean a lower homicide rate in a certain city? Before running the analysis, we thought we would find that cities that solved the most murders would generally have smaller homicide rates. 
+
+First we should filter the data to see just our open cases 
+
+```{r}
+unsolved_homicides <- homicide_data %>%
+  filter(disposition=="Open/No arrest") %>%
+  select(city, state, disposition)
+
+```
+
+Now we can find the totals for each city and arrange them so we can see the city with the highest number of open cases 
+
+```{r}
+unsolved_homicides_clean <- unsolved_homicides %>%
+   mutate(city= str_to_title(city)) %>%
+    group_by(city) %>%
+    summarise(disposition = n()) %>%
+    arrange(desc(disposition))
+```
+
+Now we can find the rate of unsolved homicides in each city
+
+```{r}
+city_totals <- homicide_data_cleaned %>%
+  group_by(city) %>%
+  count()
+
+homicide_rate <- city_totals %>%
+  left_join(city_pop, by=c("city"="City"))
+
+homicide_rate <- homicide_rate %>%
+  mutate(homicide_rate = (n/population)*100000)
+
+homicide_unsolved <- homicide_rate %>%
+  left_join(unsolved_homicides_clean, by=c("city"))
+
+homicide_unsolved <- homicide_unsolved %>%
+  mutate(unsolved_rate = (disposition/n)*100)
+
+homicide_unsolved %>%
+  ggplot() +
+  geom_point(aes(x=homicide_rate,y=unsolved_rate)) +
+  geom_smooth(aes(x=homicide_rate,y=unsolved_rate), method="lm")
+
+cor.test(homicide_unsolved$homicide_rate, homicide_unsolved$unsolved_rate)
+```
+
+The tests generally confirm what we thought would be true. As unsolved rates went down, so did homicide rates. The p-value was .01 and the r for the cor.test was .361. This would make us confident in reporting that there was generally a correlation between these two factors. This would make Baltimore not an outlier in this trend, as it has the third-highest rate of unsolved murders and the second-highest murder rate.
+
+Overall, from these findings, we can conclude that some of the more significant data points that correlate with homicides are poverty, unemployment and effective prosecution of cases, and not so much education spending and police budgets. To confirm this type of analysis, we would need more time to talk with folks who live in these areas and can speak to the effects of poverty and unemployment in their communities. We would also want to talk with academic sources that can elaborate on why poverty is so prevalent in Baltimore and whether other variables are equally or more important. It would also be important to understand the history of policing and poverty in the city. But, in general, we can conclude that the nationwide trends that show poverty and unemployment are connected to homicides hold true in Baltimore as well. We would have to begin ground-level reporting to place names and faces to the data we have found. The Baltimore City Police Department would be at the top of our source list, interviews with Mayor Brandon Scott, Baltimore City Police Commissioner Michael S. Harrison, as well as individual police officers would provide essential background information and perspective on the homicides in Baltimore. We would also need to speak with the individual families impacted by homicides, we could pick out specific cases through this data analysis and reach out to the individual surviving family members affected by homicide death. In addition, speaking with resources in the community such as homeless centers and poverty relief in Baltimore, would provide another perspective on violence in Baltimore. While there is a high statistical correlation between homeless/poverty and homicide rates, it is important to go beyond the numbers and speak to individuals who are directly combating poverty in Baltimore. 
+
+We acknowledge that there are pros and limitations in our dataset. A pro of the dataset is that it is fairly versatile and we were able to connect five different analysis ideas to the primary homicide dataset, expanding our research beyond initial murders. Since the dataset also contains homicide information about other cities in the United States, this made the set easier to analyze and find outside information that contributed to us ruling out some of our initial predictions and questions about the information we were looking at. Using education as an example, we had to compile the data manually since we didn’t think tabula wouldn’t have been the best option. Not every city is within a county, some are their own. We decided to manually put the data together which left us a random sample of 24. Some of the data we were looking to get was incomplete which gave us limitations. Like most data sets there is certainly a margin of error to account for as well. However, a positive that we found is that our data was all from official government sources. While there was still a lot of cleaning to be done, we at least know that the numbers we were working with are legit.
 
 
-## Question 4: Cities where the young get murdered. What cities have the highest rate of killings of people under 21? What cities have the most killings of people under 21? In 2012, the Chicago Reporter reported that more young Americans (under 21) die in Chicago than in any other city. Is this true still? It may have the highest total, but does it have the highest rate, which is more effective to adjust for population?
+
+We were also curious about cities where the young get murdered. What cities have the highest rate of killings of people under 21? What cities have the most killings of people under 21? In 2012, the Chicago Reporter reported that more young Americans (under 21) die in Chicago than in any other city. Is this true still? It may have the highest total, but does it have the highest rate, which is more effective to adjust for population?
 
 
-## To make it easier to count and group the number of killings uder 21, we are going to create a new column and call it "Under_21" and fill it with True and False if the age of the killed is under 21 or not.
+To make it easier to count and group the number of killings under 21, we are going to create a new column and call it "Under_21" and fill it with True and False if the age of the killed is under 21 or not.
+
+```{r}
 homicide_data_cleaned <- homicide_data_cleaned %>%
   mutate(under_21 = if_else(victim_age < 21, "True", "False"))
+```
 
-## Change victim age back to numeric
+Change victim age back to numeric
 
+```{r}
 homicide_data_cleaned <- homicide_data_cleaned %>%
   mutate(victim_age = as.numeric(victim_age))
+```
 
-## Now to find out which cities have the highest total of murders of people under 21. We will group by city and count the number of "True" results in the under_21 category for the cities.
+Now to find out which cities have the highest total of murders of people under 21. We will group by city and count the number of "True" results in the under_21 category for the cities.
+
+```{r}
 under_21_totals <- homicide_data_cleaned %>%
   filter(under_21 == "True") %>%
   group_by(city,under_21) %>%
   count() %>%
   arrange(desc(under_21))
+```
 
-## We find that between 2010 and 2017, there were 1412 killings of people under 21 in Chicago, 575 in Philadelphia, 475 in Baltimore and 434 in Houston. We can conclude that, yes, Chicago is where the highest total of people under 21 get killed. In Chicago, what is the average age of those who get killed under 21?
+We find that between 2010 and 2017, there were 1412 killings of people under 21 in Chicago, 575 in Philadelphia, 475 in Baltimore and 434 in Houston. We can conclude that, yes, Chicago is where the highest total of people under 21 get killed. In Chicago, what is the average age of those who get killed under 21?
+
+```{r}
 homicide_data_cleaned %>%
   filter(city == "Chicago", under_21 == "True") %>%
   summarise(total_age = sum(victim_age)) %>%
   summarise(total_age/1412)
 
-## The average age of those killed under 21 in Chicago is 16.75 years old. But, is Chicago where the highest rate of kids under 21 die? To find this out, we first need to add population data for each city. We're going to scrape a webpage that has populations for American cities.
+```
 
+The average age of those killed under 21 in Chicago is 16.75 years old. But, is Chicago where the highest rate of kids under 21 die? To find this out, we first need to add population data for each city. We're going to scrape a webpage that has populations for American cities.
 
-## Back to calculating the rate of murders of people under 21.
+Back to calculating the rate of murders of people under 21.
 
+```{r}
 under_21_rate <- homicide_data_cleaned %>%
   filter(under_21 == "True") %>%
   group_by(city,under_21, population) %>%
@@ -252,29 +431,20 @@ under_21_rate <- homicide_data_cleaned %>%
 
 under_21_rate <- under_21_rate %>%
   mutate(homicide_rate = (n/population)*100000)
+```
 
-## We find that actually, St. Louis is the city where young people die at the highest rate, with 97 deaths per 100000 people. Baltimore, New Orleans and Birmingham follow, with Chicago at the fifth-highest rate. What is the average age of the people that are killed under the age of 21 in St. Louis? 
+We find that actually, St. Louis is the city where young people die at the highest rate, with 97 deaths per 100000 people. Baltimore, New Orleans and Birmingham follow, with Chicago at the fifth-highest rate. What is the average age of the people that are killed under the age of 21 in St. Louis? 
 
+```{r}
 homicide_data_cleaned %>%
   filter(city == "St. Louis", under_21 == "True") %>%
   summarise(total_age = sum(victim_age)) %>%
   summarise(total_age/309)
+```
 
-## The average age is 17.39 years old. 
+The average age is 17.39 years old. 
 
-
-#Question 5: Which city has the highest amount of open cases? 
-#first we should filter the data to see just our open cases 
-unsolved_homicides <- homicide_data %>%
-  filter(disposition=="Open/No arrest") %>%
-  select(city, state, disposition)
-#now we can find the totals for each city and arrange them spo we can see the city with the highest number of open cases 
-unsolved_homicides_clean <- unsolved_homicides %>%
-   mutate(city= str_to_title(city)) %>%
-    group_by(city) %>%
-    summarise(disposition = n()) %>%
-    arrange(desc(disposition))
-#As we can see, Chicago has the most unsolved homicides with 3686. Baltimore is second with 1673 folowed by Detroit with 146.
+We found this interesting and noteworthy. We particularly found interesting that Birmingham, which in many was was not an outlier in the general dataset, had a high rate of homicides of people under 21. We thought it might be instructive to find some similarities between some of the cities that had a high rate of killings of people under 21. However, we thought that focusing on some of the more nationwide trends and correlations was a more effective use of time and a more compelling story. If we had more time, this is certainly an area we would like to explore more specifically. 
 ```
 
 ## R Markdown
